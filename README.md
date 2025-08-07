@@ -2,6 +2,10 @@
 # Table of Contents
 
 - [✅ What is a Bean?](#-what-is-a-bean)
+- [🔄 Lifecycle of a Bean in Spring](#-lifecycle-of-a-bean-in-spring)
+- [✅ What is Dependency Injection?](#-what-is-dependency-injection)
+- [🧩 @ConditionalOnProperty in Spring Boot](#-conditionalonproperty-in-spring-boot)
+
 
 
 ### ✅ What is a Bean?
@@ -58,3 +62,187 @@ Spring Boot auto-scans and registers components in the same or child packages.
 ✅ What is Bean Lifecycle?
 
 The Bean Lifecycle is the complete process from creation to destruction of a bean, managed by the Spring IoC container.
+
+### 🔁 Lifecycle Phases
+
+| Phase                              |                                            Description                                             |       
+|:-----------------------------------|:--------------------------------------------------------------------------------------------------:|
+| 1️⃣ Instantiation                  |                      **Bean object is created (via constructor or factory).**                      | 
+| 2️⃣ Dependency Injection           |                        `Spring injects dependencies using @Autowired, etc.`                        |  
+| 3️⃣ Aware Interfaces               | _If the bean implements BeanNameAware, ApplicationContextAware, etc., Spring calls those methods._ |  
+| 4️⃣ Pre-initialization             |                       _Any logic inside BeanPostProcessor before init runs._                       | 
+| 5️⃣ Initialization                 |            _Calls methods like @PostConstruct, afterPropertiesSet() (if implemented)._             | 
+| 6️⃣ Post-initialization            |                          _BeanPostProcessor logic after init completes._                           | 
+| 7️⃣ Ready to Use                   |                              _Bean is fully initialized and in use._                               | 
+| 8️⃣ Destruction                    |                  _When container shuts down, calls @PreDestroy, destroy(), etc._                   | 
+
+🧪 Example
+
+```declarative
+@Component
+public class MyBean implements InitializingBean, DisposableBean {
+
+    @PostConstruct
+    public void initMethod() {
+        System.out.println("Bean is initialized - @PostConstruct");
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        System.out.println("Bean is initialized - afterPropertiesSet");
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("Bean is being destroyed - @PreDestroy");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("Bean is being destroyed - destroy()");
+    }
+}
+
+```
+💡 Note
+
+In Spring Boot, destruction methods like @PreDestroy only work for singleton-scoped beans by default.
+
+Lifecycle methods are helpful for initializing resources (e.g., DB connections) or cleanup (e.g., closing connections).
+
+### ✅ What is Dependency Injection?
+
+Dependency Injection (DI) is a design pattern where one object supplies the dependencies (objects it needs) of another object.
+
+In Spring, DI allows Spring to manage and inject the required objects (beans) automatically, so you don’t need to manually create them using new.
+
+🧪 Example Without DI
+```java
+public class Car {
+    Engine engine = new Engine(); // Tightly coupled
+}
+```
+🧪 Example With DI (Using Spring)
+```java
+@Component
+public class Engine { }
+
+@Component
+public class Car {
+    private final Engine engine;
+
+    @Autowired
+    public Car(Engine engine) {
+        this.engine = engine;
+    }
+}
+```
+Spring will automatically inject the Engine bean into Car.
+
+### 💡 Types of Dependency Injection in Spring
+
+| Type                  | How it Works                                                        |
+|-----------------------|---------------------------------------------------------------------|
+| Constructor Injection | Dependencies are passed through the constructor (**Recommended**)   |
+| Setter Injection      | Dependencies are set using setter methods                           |
+| Field Injection       | Dependencies are injected directly into fields (**Less preferred**) |
+
+✅ Constructor Injection (Best Practice)
+
+```java
+@Component
+public class Car {
+    private final Engine engine;
+
+    @Autowired
+    public Car(Engine engine) {
+        this.engine = engine;
+    }
+}
+```
+⚠️ When You Should Use @Autowired
+- If the class has multiple constructors, and you want to tell Spring which one to use.
+- 
+- For setter or field injection, @Autowired is still required.
+
+📌 Final Tip
+For clean code, it's best to:
+- Use constructor injection without @Autowired when you have only one constructor.
+- Keep your beans as final, which works well with constructor injection.
+
+✅ Setter Injection
+```java
+@Component
+public class Car {
+    private Engine engine;
+
+    @Autowired
+    public void setEngine(Engine engine) {
+        this.engine = engine;
+    }
+}
+```
+✅ Field Injection (Not Recommended)
+```java
+@Component
+public class Car {
+
+    @Autowired
+    private Engine engine;
+}
+```
+🧠 Why Use DI?
+- Loose coupling between classes
+- asier to test (can mock dependencies)
+- Managed by Spring, not manually created
+- Cleaner, maintainable code
+
+## 🧩 @ConditionalOnProperty in Spring Boot
+
+### ✅ What is @ConditionalOnProperty?
+@ConditionalOnProperty is a Spring Boot conditional annotation used to enable or disable a bean based on a value in the application.properties or application.yml file.
+
+### 📌 Use Case:
+
+It helps you control whether a specific configuration or bean should be loaded, depending on a specific property value
+
+### 🧪 Example
+✅ Step 1: Add property in application.properties
+```java
+my.feature.enabled=true
+```
+✅ Step 2: Use @ConditionalOnProperty in your config
+```java
+@Configuration
+public class FeatureConfig {
+
+    @Bean
+    @ConditionalOnProperty(
+        name = "my.feature.enabled",
+        havingValue = "true",
+        matchIfMissing = false // optional
+    )
+    public MyFeatureBean myFeatureBean() {
+        return new MyFeatureBean();
+    }
+}
+```
+🟢 This bean will only be created if my.feature.enabled=true is present in properties.
+
+### ⚙️ Key Parameters
+
+| Parameter       | Description                                                                 |
+|------------------|-----------------------------------------------------------------------------|
+| `name`           | The property name to check (e.g. `"my.feature.enabled"`)                    |
+| `havingValue`    | The expected value to match (e.g. `"true"`)                                 |
+| `matchIfMissing` | If `true`, bean will be created even if the property is missing. Default is `false` |
+
+💡 Real-World Example
+Useful for:
+- Feature toggles
+- Dev vs Prod environments
+- Optional modules (like enabling a specific datasource or scheduler)
+
+
+
+
