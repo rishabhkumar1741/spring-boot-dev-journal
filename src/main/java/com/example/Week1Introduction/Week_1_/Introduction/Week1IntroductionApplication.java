@@ -6,13 +6,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class Week1IntroductionApplication implements CommandLineRunner
+public class Week1IntroductionApplication
 {
-	DB dbconn;
-	Week1IntroductionApplication(DB dbconn)
-	{
-		this.dbconn = dbconn;
-	}
+
 
 	public static void main(String[] args) {
 		SpringApplication.run(Week1IntroductionApplication.class, args);
@@ -21,8 +17,5 @@ public class Week1IntroductionApplication implements CommandLineRunner
 	}
 
 
-	@Override
-	public void run(String... args) throws Exception {
-		dbconn.run();
-	}
+
 }

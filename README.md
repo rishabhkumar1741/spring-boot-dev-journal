@@ -6,6 +6,16 @@
 - [✅ What is Dependency Injection?](#-what-is-dependency-injection)
 - [🧩 @ConditionalOnProperty in Spring Boot](#-conditionalonproperty-in-spring-boot)
 - [📦 @SpringBootApplication in Spring Boot](#-springbootapplication-in-spring-boot)
+- [🌐 How Does a Web Server Work in Spring Boot?](#how-does-a-web-server-work-in-spring-boot)
+- [🎨 Presentation Layer](#-presentation-layer)
+  - [🏷️ Annotated Controllers](#annotated-controllers)
+    - [🔀 Request Mappings](#request-mappings)
+    - [🌍 Dynamic URLs Paths](#dynamic-urls-paths)
+    - [📩 RequestBody](#requestbody)
+- 
+
+
+
 
 
 
@@ -233,10 +243,10 @@ public class FeatureConfig {
 
 ### ⚙️ Key Parameters
 
-| Parameter       | Description                                                                 |
-|------------------|-----------------------------------------------------------------------------|
-| `name`           | The property name to check (e.g. `"my.feature.enabled"`)                    |
-| `havingValue`    | The expected value to match (e.g. `"true"`)                                 |
+| Parameter        | Description                                                                         |
+|------------------|-------------------------------------------------------------------------------------|
+| `name`           | The property name to check (e.g. `"my.feature.enabled"`)                            |
+| `havingValue`    | The expected value to match (e.g. `"true"`)                                         |
 | `matchIfMissing` | If `true`, bean will be created even if the property is missing. Default is `false` |
 
 💡 Real-World Example
@@ -309,11 +319,53 @@ public class MyApp {
      - Database Queries 
      - Returns a Java object or response data.
 5. HttpMessageConverter
-
     - Converts the Java object to JSON (serialization) for the HTTP response.
-
 6. Response to Client
    - The JSON response is sent back to the client via Tomcat.
 
+# 🎨 Presentation Layer
 
+## Annotated Controllers
 
+Spring MVC provides an annotation-based programming model where
+@Controller and @RestController components use annotations to express
+request mappings, request input, exception handling, and more.
+
+The @RestController annotation is a shorthand for @Controller and
+@ResponseBody, meaning all methods in the controller will return
+JSON/XML directly to the response body.
+
+## Request Mappings
+
+You can use the @RequestMapping annotation to map requests to
+controllers methods. It has various attributes to match by URL, HTTP
+method, request parameters, headers, and media types.
+
+There are also HTTP method specific shortcut variants of
+@RequestMapping:
+
+- @GetMapping
+- @PostMapping
+- @PutMapping
+- @DeleteMapping
+- @PatchMapping
+
+## Dynamic URLs Paths
+
+| @PathVariable                                                                                          | @RequestParam                                                                                                              |
+|--------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `/employees/123`                                                                                       | /employees?id=123                                                                                                          |
+| Use path variables when the parameter is an essential part of the URL path that identifies a resource. | Use query parameters when the parameter is optional and usedfor filtering, sorting, or other modifications to the request. |
+
+## RequestBody
+
+@RequestBody is used to bind the HTTP request body to a Java object.
+When a client sends data in the body of a request (e.g., JSON or XML),
+@RequestBody maps this data to a Java object.
+
+Use Case:
+
+- Typically used in POST, PUT, and PATCH methods where the client
+sends data that needs to be processed by the server.
+-  Converts JSON or XML data from the request body into a Java object
+using a message converter (e.g., Jackson for JSON).
