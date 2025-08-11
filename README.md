@@ -5,6 +5,8 @@
 - [🔄 Lifecycle of a Bean in Spring](#-lifecycle-of-a-bean-in-spring)
 - [✅ What is Dependency Injection?](#-what-is-dependency-injection)
 - [🧩 @ConditionalOnProperty in Spring Boot](#-conditionalonproperty-in-spring-boot)
+- [📦 @SpringBootApplication in Spring Boot](#-springbootapplication-in-spring-boot)
+
 
 
 
@@ -243,6 +245,75 @@ Useful for:
 - Dev vs Prod environments
 - Optional modules (like enabling a specific datasource or scheduler)
 
+![internal_working_of_spring_boot ](src/main/resources/static/InternalWorkingOfSpringBoot.png)
+
+
+## 📦 @SpringBootApplication in Spring Boot
+
+@SpringBootApplication is a meta-annotation in Spring Boot.
+
+It bundles three important annotations:
+
+### 1️⃣ @Configuration
+- Marks the class as a source of bean definitions for the Spring IoC container.
+- You can define @Bean methods here.
+
+### 2️⃣ @EnableAutoConfiguration
+- Tells Spring Boot to enable auto-configuration.
+- It looks at the classpath, existing beans, and properties to configure the application automatically.
+- Driven by spring.factories and META-INF.
+
+### 3️⃣ @ComponentScan
+- Scans the package and its sub-packages for Spring-managed components (@Component, @Service, @Repository, @Controller, etc.).
+- Without this, Spring wouldn’t find your beans automatically.
+
+### 🧠 Why bundle them?
+Instead of writing:
+```java
+@Configuration
+@EnableAutoConfiguration
+@ComponentScan
+public class MyApp { }
+
+```
+You just write:
+```java
+@SpringBootApplication
+public class MyApp {
+    public static void main(String[] args) {
+        SpringApplication.run(MyApp.class, args);
+    }
+}
+```
+![internal_working_of_spring_boot ](src/main/resources/static/server.png)
+
+## How Does a Web Server Work in Spring Boot?
+1. Client Request
+   - The client sends an HTTP request (e.g., GET/POST) to the server.
+   - The server responds with JSON data.
+
+2. Tomcat (Embedded Web Server)
+   - Tomcat receives the HTTP request.
+   - It maps the request to the appropriate Servlet (in Spring Boot, it's usually DispatcherServlet).
+
+3. DispatcherServlet (Router & Dispatcher)
+
+    - Creates HttpServletRequest and HttpServletResponse objects.
+    - Delegates the request to HandlerMapping (e.g., @GetMapping("/api/hello")).
+    - Invokes the corresponding Controller method.
+4. Controller
+   - Handles the request and processes the business logic:
+     - Validation
+     - Authentication 
+     - Business Logic 
+     - Database Queries 
+     - Returns a Java object or response data.
+5. HttpMessageConverter
+
+    - Converts the Java object to JSON (serialization) for the HTTP response.
+
+6. Response to Client
+   - The JSON response is sent back to the client via Tomcat.
 
 
 
