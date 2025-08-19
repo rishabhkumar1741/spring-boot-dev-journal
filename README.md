@@ -7,17 +7,12 @@
 - [🧩 @ConditionalOnProperty in Spring Boot](#-conditionalonproperty-in-spring-boot)
 - [📦 @SpringBootApplication in Spring Boot](#-springbootapplication-in-spring-boot)
 - [🌐 How Does a Web Server Work in Spring Boot?](#how-does-a-web-server-work-in-spring-boot)
-- [🎨 Presentation Layer](#-presentation-layer)
-  - [🏷️ Annotated Controllers](#annotated-controllers)
-    - [🔀 Request Mappings](#request-mappings)
-    - [🌍 Dynamic URLs Paths](#dynamic-urls-paths)
-    - [📩 RequestBody](#requestbody)
+- [🎨 Presentation Layer & REST Annotations](#-presentation-layer--rest-annotations)
+  - [📌 Core REST Annotations](#-core-rest-annotations)
+  - [🔀 Request Mappings](#request-mappings)
+  - [🌍 Dynamic URLs Paths](#dynamic-urls-paths)
+  - [📩 RequestBody](#requestbody)
 - 
-
-
-
-
-
 
 
 ### ✅ What is a Bean?
@@ -27,7 +22,7 @@ A Bean in Spring is a Java object that is managed by the Spring IoC (Inversion o
 ### 🧪 How to Define a Bean?
 1. Using @Component (Most Common)
 
-```declarative
+```java
 @Component
 public class MyService {
     public void serve() {
@@ -38,7 +33,7 @@ public class MyService {
 📌 Make sure to enable component scanning using @ComponentScan (optional in Spring Boot).
 
 2. Using @Bean in a @Configuration class
-```declarative
+```java
 @Configuration
 public class AppConfig {
     @Bean
@@ -90,7 +85,7 @@ The Bean Lifecycle is the complete process from creation to destruction of a bea
 
 🧪 Example
 
-```declarative
+```java
 @Component
 public class MyBean implements InitializingBean, DisposableBean {
 
@@ -220,7 +215,7 @@ It helps you control whether a specific configuration or bean should be loaded, 
 
 ### 🧪 Example
 ✅ Step 1: Add property in application.properties
-```java
+```
 my.feature.enabled=true
 ```
 ✅ Step 2: Use @ConditionalOnProperty in your config
@@ -323,17 +318,38 @@ public class MyApp {
 6. Response to Client
    - The JSON response is sent back to the client via Tomcat.
 
-# 🎨 Presentation Layer
+# 🎨 Presentation Layer & REST Annotations
 
-## Annotated Controllers
+## 🖥 What is the Presentation Layer ?
+
+The Presentation Layer is the part of your app that handles user interaction — either through web pages or APIs.
+
+It takes requests ➡ sends them to the right business logic ➡ sends responses back.
+
+💡 Think: Hotel receptionist — your first point of contact
+
 
 Spring MVC provides an annotation-based programming model where
 @Controller and @RestController components use annotations to express
 request mappings, request input, exception handling, and more.
 
-The @RestController annotation is a shorthand for @Controller and
-@ResponseBody, meaning all methods in the controller will return
-JSON/XML directly to the response body.
+
+## 📌 Core REST Annotations
+
+| Annotation        | Purpose / Usage                                                                          | Example                                                     |
+|-------------------|------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `@RestController` | Combines `@Controller` and `@ResponseBody` — returns data (JSON/XML) directly, no views. | `@RestController public class MyApi {}`                     |
+| `@ResponseBody`   | Places the return value directly into the HTTP response body. Used in REST APIs.         | `@GetMapping("/hi") public String hi() { return "Hello"; }` |
+| `@RequestMapping` | Maps HTTP requests (any method) to handler methods; used at class or method level.       | `@RequestMapping("/users")`                                 |
+| `@GetMapping`     | Handles HTTP GET requests (read data).                                                   | `@GetMapping("/users")`                                     |
+| `@PostMapping`    | Handles HTTP POST requests (create data).                                                | `@PostMapping("/users")`                                    |
+| `@PutMapping`     | Handles HTTP PUT requests (full update of a resource).                                   | `@PutMapping("/users/{id}")`                                |
+| `@DeleteMapping`  | Handles HTTP DELETE requests (remove resource).                                          | `@DeleteMapping("/users/{id}")`                             |
+| `@PatchMapping`   | Handles HTTP PATCH requests (partial update of a resource).                              | `@PatchMapping("/users/{id}")`                              |
+| DTO               | **Data Transfer Object** — carries data between layers without exposing entities.        | `UserDTO { name, email }`                                   |
+| `@PathVariable`   | Extracts values from URL path segments.                                                  | `/users/101` → `@PathVariable int id`                       |
+| `@RequestParam`   | Extracts query parameters from URL.                                                      | `/users?sort=asc` → `@RequestParam String sort`             |
+| `@RequestBody`    | Maps JSON/XML request body to a Java object.                                             | `@PostMapping UserDTO user`                                 |
 
 ## Request Mappings
 
@@ -369,3 +385,48 @@ Use Case:
 sends data that needs to be processed by the server.
 -  Converts JSON or XML data from the request body into a Java object
 using a message converter (e.g., Jackson for JSON).
+
+### 🛠 Example
+
+````java
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping("/{id}")
+    public String getUser(@PathVariable int id) {
+        return "User ID: " + id;
+    }
+
+    @GetMapping
+    public String getUsers(@RequestParam(defaultValue = "asc") String sort) {
+        return "Sorting: " + sort;
+    }
+
+    @PostMapping
+    public String createUser(@RequestBody UserDTO user) {
+        return "Created user: " + user.getName();
+    }
+
+    @PutMapping("/{id}")
+    public String updateUser(@PathVariable int id, @RequestBody UserDTO user) {
+        return "Updated user " + id + " to name: " + user.getName();
+    }
+
+    @PatchMapping("/{id}")
+    public String partiallyUpdateUser(@PathVariable int id, @RequestBody Map<String, Object> updates) {
+        return "Partial update for " + id + ": " + updates;
+    }
+
+    @DeleteMapping("/{id}")
+    public String deleteUser(@PathVariable int id) {
+        return "Deleted user " + id;
+    }
+}
+````
+
+✅ Best Practices
+- Keep controllers slim — push logic to Service layer.
+- Use DTOs instead of exposing entity models.
+- Validate inputs with @Valid and error handling.
+- Stick to RESTful naming: /users, /users/{id}, /users?filter=value.
