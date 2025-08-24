@@ -1,22 +1,21 @@
 package com.example.Week1Introduction.Week_1_.Introduction.DTO;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class EmployeeDTO {
-    private Long id;
-    private String name;
+    private String name ;
+    private String role;
     private String email;
-    private Integer age ;
-    private boolean isActive;
+    private LocalDateTime creationAt;
 
-    EmployeeDTO()
-    {
 
-    }
-
-    public EmployeeDTO(boolean isActive, Integer age, String email, String name, Long id) {
-        this.isActive = isActive;
-        this.age = age;
-        this.email = email;
-        this.name = name;
-        this.id = id;
-    }
 }
