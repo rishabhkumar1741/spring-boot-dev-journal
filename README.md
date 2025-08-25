@@ -17,7 +17,11 @@
   - [📁 Repository Integration](#-repository-layer)
   - [🔄 DTO Conversion with ModelMapper](#-modelmapper--entity--dto)
   - [🧪 ReflectionUtils ](#-reflectionutils--reflectiontestutils)
-- 
+- [✅ Input Validation in Spring Boot](#-input-validation-in-spring-boot)
+  - [📦 1 Dependency: spring-boot-starter-validation](#-1-dependency-spring-boot-starter-validation)
+  - [🧩 2 Common Validation Annotations](#-2-common-validation-annotations)
+  - [📥 3. Validating Request Body](#-3-validating-request-body)
+  - [🧪 4. Custom Validation](#-4-custom-validation)
 
 
 ### ✅ What is a Bean?
@@ -595,4 +599,92 @@ String result = ReflectionTestUtils.invokeMethod(user, "privateMethodName");
 - Use ModelMapper for clean object conversion.
 - Use ReflectionTestUtils only in tests — not in production code.
 
+## ✅ Input Validation in Spring Boot
 
+### 📦 1. Dependency: spring-boot-starter-validation
+Add this to your pom.xml to enable Bean Validation using Hibernate Validator:
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
+```
+- Automatically integrates with Spring Boot
+- Enables annotations like @NotNull, @Size, @Email, etc.
+- Works with @Valid and @Validated in controllers an
+
+### 🧩 2. Common Validation Annotations
+
+| 🏷️ Annotation  | 📌 Purpose                                  | 🧪 Example Usage                      |
+|-----------------|---------------------------------------------|---------------------------------------|
+| `@NotNull`      | Field must not be `null`                    | `@NotNull private String name;`       |
+| `@NotBlank`     | Must not be empty or whitespace             | `@NotBlank private String username;`  |
+| `@NotEmpty`     | Must not be empty (for collections/strings) | `@NotEmpty List<String> tags;`        |
+| `@Size`         | Length or size constraints                  | `@Size(min=2, max=30)`                |
+| `@Email`        | Valid email format                          | `@Email private String email;`        |
+| `@Min` / `@Max` | Numeric range                               | `@Min(18) @Max(99)`                   |
+| `@Pattern`      | Regex match                                 | `@Pattern(regexp="\\d{10}")`          |
+| `@Positive`     | Must be > 0                                 | `@Positive private int quantity;`     |
+| `@Negative`     | Must be < 0                                 | `@Negative private int offset;`       |
+| `@AssertTrue`   | Must be `true`                              | `@AssertTrue private boolean agreed;` |
+| `@AssertFalse`  | Must be `false`                             | `@AssertFalse private boolean error;` |
+| `@Future`       | Date must be in the future                  | `@Future private LocalDate expiry;`   |
+| `@Past`         | Date must be in the past                    | `@Past private LocalDate dob;`        |
+
+Use these in DTOs or request models to enforce field-level constraints.
+
+### 📥 3. Validating Request Body
+```java
+@PostMapping("/register")
+public ResponseEntity<?> registerUser(@Valid @RequestBody UserDTO user) {
+    // If validation fails, Spring auto-returns 400 Bad Request
+    return ResponseEntity.ok("User registered");
+}
+```
+- @Valid triggers validation on incoming request body
+- Errors are handled automatically unless overridden
+
+### 🧪 4. Custom Validation
+✅ Step 1: Create Custom Annotation
+```java
+@Documented
+@Constraint(validatedBy = IpAddressValidator.class)
+@Target({ ElementType.FIELD })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ValidIp {
+    String message() default "Invalid IP address";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+```
+✅ Step 2: Create Validator Class
+```java
+public class IpAddressValidator implements ConstraintValidator<ValidIp, String> {
+    @Override
+    public boolean isValid(String ip, ConstraintValidatorContext context) {
+        return ip != null && ip.matches("^(\\d{1,3}\\.){3}\\d{1,3}$");
+    }
+}
+```
+✅ Step 3: Apply in DTO
+```java
+public class DeviceDTO {
+    @ValidIp
+    private String ipAddress;
+}
+```
+### 🧠 5. `@Validated` vs `@Valid`
+
+| 🏷️ Annotation | 🔍 Scope / Target                     | ⚙️ Use Case / Behavior                                                     |
+|----------------|---------------------------------------|----------------------------------------------------------------------------|
+| `@Valid`       | Method parameters, fields             | Triggers validation on request bodies, nested objects, and fields in DTOs  |
+| `@Validated`   | Class-level (e.g., on service)        | Enables method-level validation and supports validation groups             |
+|                |                                       | Required for validating method parameters in service or controller methods |
+| ✅ Key Point    | `@Valid` is simpler and field-focused | `@Validated` is more flexible and supports advanced scenarios like groups  |
+
+
+✅ Best Practices
+-  	Use DTOs for validation — don’t annotate entities directly.
+- 	Keep custom validators reusable and well-documented.
+- 	Use  for centralized error handling.
+- 	Prefer  for request bodies,  for method-level checks.
