@@ -5,15 +5,16 @@ import com.example.Week1Introduction.Week_1_.Introduction.DTO.EmployeeDTO;
 
 
 import com.example.Week1Introduction.Week_1_.Introduction.Services.EmployeeService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 
 @RestController
@@ -29,9 +30,18 @@ public class EmployeeController {
     }
 
 
-    public static <T> CustomResponseMessage<T> response(T data, String message,HttpStatus status )
+
+
+    public static <T> CustomResponseMessage<T> response(T data, String message, HttpStatus status )
     {
         return new CustomResponseMessage<>(true,message,data,status,LocalDateTime.now());
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<CustomResponseMessage<String>> handleEmployeeNotFound(NoSuchElementException exception)
+    {
+        return new ResponseEntity<CustomResponseMessage<String>>( response("No Data",exception.getMessage(),HttpStatus.NOT_FOUND),HttpStatus.NOT_FOUND);
+
     }
 
     @GetMapping
@@ -41,7 +51,7 @@ public class EmployeeController {
     }
 
     @PostMapping
-    public ResponseEntity<CustomResponseMessage<EmployeeDTO>> addEmployee(@RequestBody EmployeeDTO employeeDTO)
+    public ResponseEntity<CustomResponseMessage<EmployeeDTO>> addEmployee(@RequestBody @Valid EmployeeDTO employeeDTO)
     {
         EmployeeDTO emp = service.addEmployee(employeeDTO);
         return new ResponseEntity<CustomResponseMessage<EmployeeDTO>>(response(emp,"Employee created successfully",HttpStatus.CREATED),HttpStatus.CREATED);
@@ -51,7 +61,14 @@ public class EmployeeController {
     public ResponseEntity<CustomResponseMessage<EmployeeDTO>> getEmployeeById(@PathVariable int empId)
     {
         EmployeeDTO emp = service.getEmployeeById(empId);
+        System.out.println("Rishabh ================ "+ emp);
+        if(emp==null)
+        {
+            throw new NoSuchElementException("user not found");
+        }
+
         return new ResponseEntity<>(response(emp,"Employees Data",HttpStatus.OK),HttpStatus.OK);
+
     }
 
     @DeleteMapping(path = "/{Empid}")

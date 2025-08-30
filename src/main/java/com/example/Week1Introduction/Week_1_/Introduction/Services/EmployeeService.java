@@ -59,6 +59,7 @@ public class EmployeeService {
                     // update existing
                     existingEmp.setName(employeeDTO.getName());
                     existingEmp.setRole(employeeDTO.getRole());
+                    existingEmp.setEmail(employeeDTO.getEmail());
                     existingEmp.setCreationAt(LocalDateTime.now());
                     return existingEmp;
                 })

@@ -16,11 +16,12 @@ public class CustomResponseMessage<T> {
     private final HttpStatus statusCode;
     private final LocalDateTime timestamp;
 
-    public CustomResponseMessage(boolean success, String message, T data, HttpStatus statusCode, LocalDateTime timestamp) {
+    public CustomResponseMessage(boolean success, String message, T data, HttpStatus statusCode,LocalDateTime timestamp) {
         this.success = success;
         this.message = message;
         this.data = data;
         this.statusCode = statusCode;
         this.timestamp = timestamp;
     }
+
 }
