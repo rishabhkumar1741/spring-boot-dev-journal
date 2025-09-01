@@ -19,12 +19,12 @@ import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping(path = "/employees")
-public class EmployeeController {
+public class EmployeeController1 {
 
     private final EmployeeService service;
     List<EmployeeDTO> emp = new LinkedList<>();
 
-    EmployeeController(EmployeeService service )
+    EmployeeController1(EmployeeService service )
     {
         this.service = service;
     }
