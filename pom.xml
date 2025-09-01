@@ -28,7 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
-	</properties>
+	</properties>s
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
