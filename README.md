@@ -22,6 +22,20 @@
   - [🧩 2 Common Validation Annotations](#-2-common-validation-annotations)
   - [📥 3. Validating Request Body](#-3-validating-request-body)
   - [🧪 4. Custom Validation](#-4-custom-validation)
+- [🌐 Exception Handling in Spring Boot](#-exception-handling-in-spring-boot)
+  - [Local Exception Handling (@ExceptionHandler inside controller)](#-1-local-exception-handling-exceptionhandler-inside-controller)
+  - [Global Exception Handling (@RestControllerAdvice)](#-2-global-exception-handling-restcontrolleradvice)
+- [📒 ResponseBodyAdvice in Spring Boot](#-responsebodyadvice-in-spring-boot)
+  - [Benefits](#-benefits)
+- ##### [🧩 Full Example: Unified API Response (Success + Error)](#-full-example-unified-api-responses-with-responsebodyadvice)
+  - [1️⃣ DTO Class](#1-dto-class)
+  - [2️⃣ ApiResponse Wrapper](#2-apiresponse-wrapper)
+  - [3️⃣ ErrorDetail Class](#3-errordetail-class)
+  - [4️⃣ ErrorCode Enum](#4-errorcode-enum)
+  - [5️⃣ GlobalExceptionHandler](#5-globalexceptionhandler)
+  - [6️⃣ ResponseBodyAdvice Wrapper](#6-responsebodyadvice-wrapper)
+  - [7️⃣ Controller Example](#7-controller-example)
+  - [8️⃣ Example Outputs](#8-example-outputs)
 
 
 ### ✅ What is a Bean?
@@ -688,3 +702,509 @@ public class DeviceDTO {
 - 	Keep custom validators reusable and well-documented.
 - 	Use  for centralized error handling.
 - 	Prefer  for request bodies,  for method-level checks.
+
+
+## 🌐 Exception Handling in Spring Boot
+-  Why Exception Handling?
+- Prevents raw stack traces from leaking to clients.
+- Returns clean, structured, user-friendly error responses.
+- Keeps code centralized & maintainable.
+
+#### Example:
+If you request /employees/99 and employee doesn’t exist:
+
+❌ Bad:
+```text
+java.util.NoSuchElementException: No value present
+   at java.util.Optional.get(Optional.java:133)
+   ...
+```
+✅ Good:
+```JSON
+{
+  "success": false,
+  "code": "NOT_FOUND",
+  "message": "Employee not found with id 99",
+  "path": "/api/employees/99",
+  "timestamp": "2025-09-01T10:15:00Z"
+}
+```
+### 🔹 1. Local Exception Handling (@ExceptionHandler inside controller)
+```java
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+    @GetMapping("/{id}")
+    public EmployeeDTO getEmployee(@PathVariable int id) {
+        if (id == 99) {
+            throw new NoSuchElementException("Employee not found with id " + id);
+        }
+        return new EmployeeDTO(id, "John Doe", "Developer");
+    }
+
+    // Handles exceptions ONLY in this controller
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<String> handleNotFound(NoSuchElementException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+}
+```
+👉 Here, if a **NoSuchElementException** is thrown in this controller, the method **handleNotFound()** will run.
+
+- Works only inside this controller.
+- If you want global handling, this becomes repetitive.
+###  🔹 2. Global Exception Handling (@RestControllerAdvice)
+@RestControllerAdvice = @ControllerAdvice + @ResponseBody
+
+- Applies to all controllers in your app.
+- Lets you define centralized error handling logic.
+
+Example:
+```java
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(NoSuchElementException exception, HttpServletRequest req)
+    {
+        ApiResponse<Void> body = ApiResponse.error(ErrorCode.NOT_FOUND.name(),exception.getMessage(),null);
+        body.setPath(req.getRequestURI());
+        return new ResponseEntity<>(body,HttpStatus.BAD_REQUEST);
+    }
+
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleallexceptions(MethodArgumentNotValidException e, HttpServletRequest req)
+    {
+        List<ErrorDetail> details = e.getBindingResult().getFieldErrors()
+                .stream()
+                .map(err -> new ErrorDetail(err.getField(),err.getDefaultMessage(),err.getCode()))
+                .toList();
+        ApiResponse<Void> body = ApiResponse.error(ErrorCode.VALIDATION_ERROR.name(), "Invalid input provided",details);
+        return new ResponseEntity<>(body,HttpStatus.BAD_REQUEST);
+    }
+
+}
+
+```
+👉 Now all controllers benefit from the same error handling.
+No need to repeat @ExceptionHandler everywhere.
+
+### 🔹 How Spring decides which handler to use
+
+- If an exception happens in a controller:
+  - First checks for a local @ExceptionHandler.
+  - If none → looks in global @RestControllerAdvice.
+  - If none → returns Spring’s default error JSON
+
+🔹 Example Flow
+
+1. Request: GET /api/employees/99
+2. Controller throws NoSuchElementException.
+3. Spring looks for @ExceptionHandler(NoSuchElementException.class).
+   - If found in controller → executes it.
+   - Else → executes global handler (@RestControllerAdvice).
+4. Response returned in JSON format
+
+## 📒 ResponseBodyAdvice in Spring Boot
+
+### 🔹 What is ResponseBodyAdvice?
+- An interceptor provided by Spring MVC.
+- It allows you to customize or wrap the response body before it’s sent to the client.
+- Commonly used for:
+  - Wrapping all API responses in a standard format (e.g., ApiResponse).
+  - Logging responses.
+  - Encrypting/masking data before sending.
+### 🔹 Example Implementation
+
+```java
+@RestControllerAdvice
+public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
+
+    @Override
+    public boolean supports(MethodParameter returnType, 
+                            Class<? extends HttpMessageConverter<?>> converterType) {
+        // Apply to all responses except when it's already ApiResponse
+        return !returnType.getParameterType().equals(ApiResponse.class);
+    }
+
+    @Override
+    public Object beforeBodyWrite(Object body,
+                                  MethodParameter returnType,
+                                  MediaType selectedContentType,
+                                  Class<? extends HttpMessageConverter<?>> selectedConverterType,
+                                  ServerHttpRequest request,
+                                  ServerHttpResponse response) {
+
+        // Skip if already wrapped by error handler
+        if (body instanceof ApiResponse) return body;
+
+        // Wrap normal success responses
+        ApiResponse<Object> res = ApiResponse.success(body, "Request successful");
+        res.setPath(((ServletServerHttpRequest) request).getServletRequest().getRequestURI());
+        res.setTimestamp(OffsetDateTime.now());
+        return res;
+    }
+}
+```
+### 🔹 Example Controller
+```java
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+    @PostMapping
+    public EmployeeDTO postEmployee(@RequestBody @Valid EmployeeDTO employeeDTO) {
+        // Normally you'd save to DB; here we just return the DTO
+        return employeeDTO;
+    }
+
+    @GetMapping("/{id}")
+    public EmployeeDTO getEmployee(@PathVariable int id) {
+        if (id == 99) throw new NoSuchElementException("Employee not found with id " + id);
+        return new EmployeeDTO(id, "John Doe", "Developer");
+    }
+}
+```
+### 🔹 Example Outputs
+✅ Success Response (POST /api/employees)
+
+Controller returned raw EmployeeDTO, but ResponseBodyAdvice wrapped it:
+```json
+{
+    "success": true,
+    "code": "OK",
+    "message": "Request successful",
+    "data": {
+        "name": "Mr. Ora Strosin",
+        "role": "USER",
+        "email": "Meta.Dickens47@hotmail.com",
+        "active": false,
+        "phoneNumber": 9910561642
+    },
+    "path": "/v1/employees",
+    "timestamp": "2025-09-02T17:11:05.7626731+05:30"
+}
+```
+❌ Error Response (GET /api/employees/99)
+
+Exception is caught by @RestControllerAdvice (GlobalExceptionHandler), so no wrapping happens:
+
+```json
+{
+    "success": false,
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input provided",
+    "errors": [
+        {
+            "field": "role",
+            "message": "Role of Employee can either be USER OR ADMIN",
+            "code": "EmployeeRoleValidation"
+        },
+        {
+            "field": "phoneNumber",
+            "message": "must be greater than or equal to 1000000000",
+            "code": "Min"
+        }
+    ],
+    "timestamp": "2025-09-02T17:11:39.9791358+05:30"
+}
+```
+### 🔹 Benefits
+- Ensures every response (success/error) has the same format.
+- Controllers remain clean → they only return DTOs.
+- Frontend always receives a predictable JSON structure.
+
+# 🧩 Full Example: Unified API Responses with ResponseBodyAdvice
+- A EmployeeDTO class.
+- A ApiResponse wrapper.
+- ErrorDetail + ErrorCode.
+- A GlobalExceptionHandler (@RestControllerAdvice).
+- A ResponseBodyAdvice (ApiResponseWrapper).
+- A EmployeeController
+##  1️⃣ DTO Class
+```java
+// package com.example.demo.employee.dto;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+
+public class EmployeeDTO {
+    private int id;
+
+    @NotBlank(message = "Name is mandatory")
+    private String name;
+
+    @NotBlank(message = "Role is mandatory")
+    private String role;
+
+    @Min(value = 18, message = "Age must be at least 18")
+    private int age;
+
+    public EmployeeDTO() {}
+
+    public EmployeeDTO(int id, String name, String role) {
+        this.id = id;
+        this.name = name;
+        this.role = role;
+    }
+    // getters & setters
+}
+```
+### 2️⃣ ApiResponse Wrapper
+```java
+// package com.example.demo.api.model;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ApiResponse<T> {
+    private boolean success;
+    private String code;
+    private String message;
+    private T data;
+    private List<ErrorDetail> errors;
+    private String path;
+    private OffsetDateTime timestamp;
+
+    public static <T> ApiResponse<T> success(T data, String message) {
+        ApiResponse<T> res = new ApiResponse<>();
+        res.success = true;
+        res.code = "OK";
+        res.message = (message != null ? message : "Request successful");
+        res.data = data;
+        res.timestamp = OffsetDateTime.now();
+        return res;
+    }
+
+    public static <T> ApiResponse<T> error(String code, String message, List<ErrorDetail> errors) {
+        ApiResponse<T> res = new ApiResponse<>();
+        res.success = false;
+        res.code = code;
+        res.message = message;
+        res.errors = errors;
+        res.timestamp = OffsetDateTime.now();
+        return res;
+    }
+    // getters & setters
+    public void setPath(String path) { this.path = path; }
+    public void setTimestamp(OffsetDateTime timestamp) { this.timestamp = timestamp; }
+}
+
+```
+### 3️⃣ ErrorDetail Class
+```java
+// package com.example.demo.api.model;
+
+public class ErrorDetail {
+    private String field;
+    private String message;
+    private String code;
+
+    public ErrorDetail(String field, String message, String code) {
+        this.field = field;
+        this.message = message;
+        this.code = code;
+    }
+
+    // getters & setters
+}
+```
+### 4️⃣ ErrorCode Enum
+```java
+// package com.example.demo.api.model;
+
+import org.springframework.http.HttpStatus;
+
+public enum ErrorCode {
+    OK(HttpStatus.OK, "Request successful"),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found"),
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Validation failed"),
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong");
+
+    private final HttpStatus httpStatus;
+    private final String defaultMessage;
+
+    ErrorCode(HttpStatus httpStatus, String defaultMessage) {
+        this.httpStatus = httpStatus;
+        this.defaultMessage = defaultMessage;
+    }
+
+    public HttpStatus getHttpStatus() { return httpStatus; }
+    public String getDefaultMessage() { return defaultMessage; }
+}
+```
+### 5️⃣ GlobalExceptionHandler
+```java
+// package com.example.demo.api.error;
+
+import com.example.demo.api.model.*;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(NoSuchElementException ex, HttpServletRequest req) {
+        ApiResponse<Void> body = ApiResponse.error(
+                ErrorCode.NOT_FOUND.name(),
+                ex.getMessage(),
+                null
+        );
+        body.setPath(req.getRequestURI());
+        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+        List<ErrorDetail> details = ex.getBindingResult().getFieldErrors()
+                .stream()
+                .map(err -> new ErrorDetail(err.getField(), err.getDefaultMessage(), err.getCode()))
+                .collect(Collectors.toList());
+
+        ApiResponse<Void> body = ApiResponse.error(
+                ErrorCode.VALIDATION_ERROR.name(),
+                "Invalid input provided",
+                details
+        );
+        body.setPath(req.getRequestURI());
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex, HttpServletRequest req) {
+        ApiResponse<Void> body = ApiResponse.error(
+                ErrorCode.INTERNAL_ERROR.name(),
+                ex.getMessage(),
+                null
+        );
+        body.setPath(req.getRequestURI());
+        return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+
+```
+### 6️⃣ ResponseBodyAdvice Wrapper
+```java
+// package com.example.demo.api.advice;
+
+import com.example.demo.api.model.ApiResponse;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.server.*;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+
+import java.time.OffsetDateTime;
+
+@RestControllerAdvice
+public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
+
+    @Override
+    public boolean supports(MethodParameter returnType,
+                            Class<? extends HttpMessageConverter<?>> converterType) {
+        return !returnType.getParameterType().equals(ApiResponse.class);
+    }
+
+    @Override
+    public Object beforeBodyWrite(Object body, MethodParameter returnType,
+                                  MediaType selectedContentType,
+                                  Class<? extends HttpMessageConverter<?>> selectedConverterType,
+                                  ServerHttpRequest request,
+                                  ServerHttpResponse response) {
+
+        if (body instanceof ApiResponse) return body;
+
+        ApiResponse<Object> res = ApiResponse.success(body, "Request successful");
+        res.setPath(((ServletServerHttpRequest) request).getServletRequest().getRequestURI());
+        res.setTimestamp(OffsetDateTime.now());
+        return res;
+    }
+}
+
+```
+### 7️⃣ Controller Example
+```java
+// package com.example.demo.employee.controller;
+
+import com.example.demo.employee.dto.EmployeeDTO;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.NoSuchElementException;
+
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+    @GetMapping("/{id}")
+    public EmployeeDTO getEmployee(@PathVariable int id) {
+        if (id == 99) throw new NoSuchElementException("Employee not found with id " + id);
+        return new EmployeeDTO(id, "John Doe", "Developer");
+    }
+
+    @PostMapping
+    public ResponseEntity<EmployeeDTO> postEmployee(@RequestBody EmployeeDTO employeeDTO) {
+        // here normally you'd save employee
+        return new ResponseEntity<>(employeeDTO, HttpStatus.CREATED);
+    }
+}
+
+```
+### 8️⃣ Example Outputs
+✅ Success – GET /api/employees/1
+```json
+{
+  "success": true,
+  "code": "OK",
+  "message": "Request successful",
+  "data": {
+    "id": 1,
+    "name": "John Doe",
+    "role": "Developer",
+    "age": 0
+  },
+  "path": "/api/employees/1",
+  "timestamp": "2025-08-31T12:00:00Z"
+}
+```
+❌ Error – GET /api/employees/99
+```json
+{
+  "success": false,
+  "code": "NOT_FOUND",
+  "message": "Employee not found with id 99",
+  "path": "/api/employees/99",
+  "timestamp": "2025-08-31T12:01:00Z"
+}
+
+```
+❌ Error – Validation (POST without name)
+```json
+{
+  "success": false,
+  "code": "VALIDATION_ERROR",
+  "message": "Invalid input provided",
+  "errors": [
+    { "field": "name", "message": "Name is mandatory", "code": "NotBlank" }
+  ],
+  "path": "/api/employees",
+  "timestamp": "2025-08-31T12:02:00Z"
+}
+
+```
