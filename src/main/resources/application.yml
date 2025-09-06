@@ -1,0 +1,18 @@
+#spring.application.name=Week-1-Introduction
+#
+#spring.h2.console.enabled=true
+#spring.datasource.url=jdbc:h2:file:/Users/Rishabh Kumar/OneDrive/Desktop/Data
+#spring.datasource.username=rishabh
+#spring.datasource.password=rishabh1741
+#spring.jpa.hibernate.ddl-auto=create
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/airBnb
+    username: Rishabh
+    password: Temp@123
+  jpa:
+    hibernate:
+      dll-auto: create
+
+
+

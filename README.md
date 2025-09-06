@@ -1,5 +1,5 @@
 # Spring Boot
-# Table of Contents
+# Spring Boot MVC and RESTful APIs
 
 - [✅ What is a Bean?](#-what-is-a-bean)
 - [🔄 Lifecycle of a Bean in Spring](#-lifecycle-of-a-bean-in-spring)
@@ -27,7 +27,7 @@
   - [Global Exception Handling (@RestControllerAdvice)](#-2-global-exception-handling-restcontrolleradvice)
 - [📒 ResponseBodyAdvice in Spring Boot](#-responsebodyadvice-in-spring-boot)
   - [Benefits](#-benefits)
-- ##### [🧩 Full Example: Unified API Response (Success + Error)](#-full-example-unified-api-responses-with-responsebodyadvice)
+- [🧩 Full Example: Unified API Response (Success + Error)](#-full-example-unified-api-responses-with-responsebodyadvice)
   - [1️⃣ DTO Class](#1-dto-class)
   - [2️⃣ ApiResponse Wrapper](#2-apiresponse-wrapper)
   - [3️⃣ ErrorDetail Class](#3-errordetail-class)
@@ -36,6 +36,8 @@
   - [6️⃣ ResponseBodyAdvice Wrapper](#6-responsebodyadvice-wrapper)
   - [7️⃣ Controller Example](#7-controller-example)
   - [8️⃣ Example Outputs](#8-example-outputs)
+# Hibernate and JPA
+- 
 
 
 ### ✅ What is a Bean?
@@ -1206,5 +1208,108 @@ public class EmployeeController {
   "path": "/api/employees",
   "timestamp": "2025-08-31T12:02:00Z"
 }
-
 ```
+
+## Hibernate and JPA
+#### Hibernate ORM Mapping
+
+![rishabh](src/main/resources/static/JPA1.png)
+![rishabh](src/main/resources/static/JPA2.png)
+
+## Hibernate
+
+Hibernate is a powerful, high-performance Object-Relational Mapping
+(ORM) framework that is widely used with Java. It provides a framework
+for mapping an object-oriented domain model to a relational database.
+
+Hibernate is one of the implementations of the Java Persistence API
+(JPA), which is a standard specification for ORM in Java.
+
+## JPA (Java Persistence API)
+
+JPA is a specification for object-relational mapping (ORM) in Java.
+
+It defines a set of interfaces and annotations for mapping Java
+objects to database tables and vice versa.
+
+JPA itself is just a set of guidelines and does not provide any
+implementation. The implementation of JPA is provided by ORM
+frameworks such as Hibernate, EclipseLink, and OpenJPA.
+
+### So Basically…
+JPA Provides a standard for ORM in Java applications, ensuring that
+developers can switch between different JPA providers without changing
+their code.  
+
+And
+
+Hibernate is one such JPA Provider.
+
+However,
+
+Hibernate is a specific implementation of JPA and a powerful ORM
+framework on its own. It offers additional features and optimizations
+beyond the JPA specification, making it a popular choice for ORM in
+Java applications.
+
+## Common Hibernate Configurations
+Hibernate needs some settings to work with the database.
+Usually written in application.properties (Spring Boot) or hibernate.cfg.xml (core Hibernate).
+
+Example (Spring Boot way):
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/mydb
+spring.datasource.username=root
+spring.datasource.password=1234
+spring.jpa.hibernate.ddl-auto=update/create/validate/createdrop/none
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL
+   5Dialect (Optional)
+```
+- hibernate.dialect → tells Hibernate which SQL flavor to use (MySQL, Oracle, Postgres, etc).
+
+- ddl-auto → controls table creation:
+
+  - create → drops old and creates new tables every time.
+  - update → updates schema (recommended for dev).
+  - validate → only checks schema, doesn’t change.
+  - none → no action.
+
+## Entity Annotation
+`Marks a Java class as a JPA entity (i.e., it maps to a DB table).`
+
+`Without @Entity, Hibernate ignores the class.`
+- @Entity
+- @Table
+- @Id
+- @GeneratedValue(strategy = GenerationType.IDENTITY)
+- @Column(name = "name", nullable = false, length = 50)
+- @CreationTimestamp and @UpdateTimestamp
+
+#### Table Annotation
+```java
+@Table(
+name = "employees",
+catalog = "employee_catalog",
+schema = "hr",
+uniqueConstraints = {
+@UniqueConstraint(columnNames = {"email"})
+},
+indexes = {
+@Index(name = "idx_name", columnList = "name"),
+@Index(name = "idx_department", columnList = "department")
+}
+)
+```
+
+### Key features of JPA
+1. Entity Management: Defines how entities (Java objects) are
+   persisted to the database.
+2. Query Language: Provides JPQL (Java Persistence Query Language) for
+   querying entities.
+3. Transactions: Manages transactions, making it easier to handle
+   database operations within a transactional context.
+4. Entity Relationships: Supports defining relationships between
+   entities (e.g., One-to-One, One-to-Many, Many-to-One, Many-toMany).
