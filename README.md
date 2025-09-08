@@ -41,6 +41,11 @@
   - [Common Hibernate Configurations](#common-hibernate-configurations)
   - [Entity Annotation](#entity-annotation)
   - [Key features of JPA](#key-features-of-jpa)
+- [Spring Data JPA & Dynamic Query Methods](#spring-data-jpa--dynamic-query-methods)
+  - [What is Spring Data JPA?](#1-what-is-spring-data-jpa)
+  - [Dynamic Query By Methods](#1-dynamic-query-methods)
+  - [@Query Annotation](#2-query-annotation)
+  - 
 
 
 ### ✅ What is a Bean?
