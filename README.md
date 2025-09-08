@@ -1,6 +1,5 @@
 # Spring Boot
-# Spring Boot MVC and RESTful APIs
-
+#### Spring Boot MVC and RESTful APIs
 - [✅ What is a Bean?](#-what-is-a-bean)
 - [🔄 Lifecycle of a Bean in Spring](#-lifecycle-of-a-bean-in-spring)
 - [✅ What is Dependency Injection?](#-what-is-dependency-injection)
@@ -36,8 +35,12 @@
   - [6️⃣ ResponseBodyAdvice Wrapper](#6-responsebodyadvice-wrapper)
   - [7️⃣ Controller Example](#7-controller-example)
   - [8️⃣ Example Outputs](#8-example-outputs)
-# Hibernate and JPA
-- 
+ ###  Hibernate
+- [Hibernate and JPA](#hibernate-and-jpa)
+  - [JPA (Java Persistence API)](#jpa-java-persistence-api)
+  - [Common Hibernate Configurations](#common-hibernate-configurations)
+  - [Entity Annotation](#entity-annotation)
+  - [Key features of JPA](#key-features-of-jpa)
 
 
 ### ✅ What is a Bean?
@@ -1210,7 +1213,7 @@ public class EmployeeController {
 }
 ```
 
-## Hibernate and JPA
+# Hibernate and JPA
 #### Hibernate ORM Mapping
 
 ![rishabh](src/main/resources/static/JPA1.png)
@@ -1313,3 +1316,83 @@ indexes = {
    database operations within a transactional context.
 4. Entity Relationships: Supports defining relationships between
    entities (e.g., One-to-One, One-to-Many, Many-to-One, Many-toMany).
+
+## Spring Data JPA & Dynamic Query Methods
+
+####  1. What is Spring Data JPA?
+Spring Data JPA is a part of the Spring framework that makes it easy to interact with relational databases using JPA (Java Persistence API).
+
+👉 Instead of writing boilerplate SQL queries or EntityManager code, you just define repository interfaces and Spring generates queries for you.
+
+Example:
+```java
+public interface UserRepository extends JpaRepository<User, Long> {
+    List<User> findByLastName(String lastName);
+}
+
+```
+Here, Spring generates the query:
+```sql
+SELECT * FROM user WHERE last_name = ?;
+```
+#### Key features of Spring Data JPA
+1. Repository Abstraction: Provides a Repository interface with
+   methods for common data access operations.
+2. Custom Query Methods: Allows defining custom query methods by
+   simply declaring method names.
+3. Pagination and Sorting: Offers built-in support for pagination and
+   sorting.
+4. Query Derivation: Automatically generates queries from method
+   names.
+### 1.  Dynamic Query Methods
+
+#### Rules for Creating Query Methods
+   ![rishabh](src/main/resources/static/JPA3.png)
+   
+#### Rules for Method Names
+1. The name of our query method must start with one of the following
+   prefixes: find...By, read...By, query...By, and get...By.
+   Examples: findByName, readByName, queryByName, getByName
+2. If we want to limit the number of returned query results, we can
+   add the First or the Top keyword before the first By word.
+   Examples: findFirstByName, readFirst2ByName, findTop10ByName
+#### Rules for Method Names
+1. If we want to select unique results, we have to add the Distinct
+   keyword before the first By word.
+   Examples: findDistinctByName or findNameDistinctBy
+2. Combine property expression with AND and OR.
+   Examples: findByNameOrDescription, findByNameAndDescription
+3. Checkout the Official Doc for more info:
+
+```java
+// Find users by first name
+List<User> findByFirstName(String firstName);
+
+// Find users by first name and last name
+List<User> findByFirstNameAndLastName(String firstName, String lastName);
+
+// Find users with age greater than
+List<User> findByAgeGreaterThan(int age);
+
+// Find users whose name contains a keyword
+List<User> findByFirstNameContaining(String keyword);
+
+```
+   https://docs.spring.io/spring-data/jpa/reference/repositories/query-keywords-reference.html
+
+### 2 @Query Annotation
+When you need more control, you can write JPQL or native SQL queries.
+
+Example with JPQL:
+```java
+@Query("SELECT u FROM User u WHERE u.email = :email")
+User findByEmail(@Param("email") String email);
+```
+Example with Native SQL:
+```java
+@Query(value = "SELECT * FROM users u WHERE u.email = :email", nativeQuery = true)
+User findByEmailNative(@Param("email") String email);
+
+@Query("SELECT e FROM Employee e WHERE e.name LIKE CONCAT('%', :name, '%') OR e.email LIKE CONCAT('%', :email, '%')")
+List<Employee>rishabh(@Param("name") String name, @Param("email") String email);
+```

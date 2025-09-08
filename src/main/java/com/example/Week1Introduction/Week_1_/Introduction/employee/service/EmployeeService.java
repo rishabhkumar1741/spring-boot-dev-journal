@@ -7,8 +7,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,5 +36,27 @@ public class EmployeeService {
         emp.setCreationAt(LocalDateTime.now());
 
         return modelMapper.map(this.employeeRepository.save(emp),EmployeeDTO.class);
+    }
+
+    public List<EmployeeDTO> test() {
+        List<Employee> obj = employeeRepository.rishabh("Rishabh","R");
+        if(obj.isEmpty() )
+        {
+            throw new NoSuchElementException("No element found");
+        }
+
+        return obj.stream().map(x->  modelMapper.map(x,EmployeeDTO.class)).toList();
+
+    }
+
+    public Boolean delete(Long id) throws Exception {
+         try{
+             this.employeeRepository.deleteById(id);
+             return true;
+         }catch (Exception e)
+         {
+             throw new Exception(e.getMessage());
+         }
+
     }
 }

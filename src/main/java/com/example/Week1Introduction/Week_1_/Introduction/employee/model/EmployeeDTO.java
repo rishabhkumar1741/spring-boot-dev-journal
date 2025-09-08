@@ -22,8 +22,6 @@ public class EmployeeDTO {
     @Size(min = 3)
     private String email;
     private boolean active;
-    @Min(1000000000L)  // min 10-digit
-    @Max(9999999999L)  // max 10-digit
     private Long phoneNumber;
 
 }

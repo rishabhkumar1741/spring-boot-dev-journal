@@ -5,6 +5,7 @@ import com.example.Week1Introduction.Week_1_.Introduction.common.exception.Emplo
 import com.example.Week1Introduction.Week_1_.Introduction.employee.model.EmployeeDTO;
 import com.example.Week1Introduction.Week_1_.Introduction.employee.service.EmployeeService;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -43,7 +44,22 @@ public class EmployeeController {
     {
         System.out.println("=================== "+ empid);
         throw new NoSuchElementException() ;
-
     }
 
+    @GetMapping(path = "/test")
+    public List<EmployeeDTO> test()
+    {
+        System.out.println("Rishabh");
+        if(employeeService.test()!=null)
+        {
+            return employeeService.test();
+        }else {
+            throw  new NoSuchElementException("No Data Found");
+        }
+    }
+
+    @DeleteMapping(path ={"/{id}"} )
+    public Boolean delete(@PathVariable Long id) throws Exception {
+        return this.employeeService.delete(id);
+    }
 }

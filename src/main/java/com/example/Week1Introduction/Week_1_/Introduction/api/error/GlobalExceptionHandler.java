@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     {
         ApiResponse<Void> body = ApiResponse.error(ErrorCode.NOT_FOUND.name(),exception.getMessage(),null);
         body.setPath(req.getRequestURI());
-        return new ResponseEntity<>(body,HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body,HttpStatus.NOT_FOUND);
     }
 
 

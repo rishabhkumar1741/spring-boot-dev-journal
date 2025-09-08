@@ -6,24 +6,30 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Employee")
 @Entity
+@Table(
+uniqueConstraints = {@UniqueConstraint(name = "name_email",columnNames = {"name","email"})},
+        indexes = {@Index(name= "emp_id",columnList = "employeeId")}
+)
 public class Employee {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    private Long employee_Id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long employeeId; // prefer camelCase field names
+    @Column(nullable = false)
     private String name;
+    @Column(nullable = false)
     private String role;
+
     private String email;
+
     private LocalDateTime creationAt;
     private boolean active;
     private Long phoneNumber;
-
 }
