@@ -45,8 +45,15 @@
   - [What is Spring Data JPA?](#1-what-is-spring-data-jpa)
   - [Dynamic Query By Methods](#1-dynamic-query-methods)
   - [@Query Annotation](#2-query-annotation)
-  - 
-
+- [Sorting and Pagination in Spring Data Jpa](#sorting-and-pagination-in-spring-data-jpa)
+  - [Sorting with method queries](#1-sorting-with-method-queries)
+  - [2. Sorting with the Sort class](#2-sorting-with-the-sort-class)
+  - [Pagination](#pagination)
+- [Projection in Spring Data JPA](#projection-in-spring-data-jpa)
+  - [1. Default (Entity) Fetch](#1-default-entity-fetch-)
+  - [2. Interface-based Projection](#2-interface-based-projection)
+  - [3. Class-based (DTO) Projection](#3-class-based-dto-projection)
+  - [4. Dynamic Projection](#4-dynamic-projection)
 
 ### ✅ What is a Bean?
 
@@ -1401,3 +1408,131 @@ User findByEmailNative(@Param("email") String email);
 @Query("SELECT e FROM Employee e WHERE e.name LIKE CONCAT('%', :name, '%') OR e.email LIKE CONCAT('%', :email, '%')")
 List<Employee>rishabh(@Param("name") String name, @Param("email") String email);
 ```
+## Sorting and Pagination in Spring Data Jpa
+
+### Sorting 
+#### 1. Sorting with method queries
+- OrderBy
+```java
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee,
+Long> {
+List<Employee> findAllByOrderByNameAsc();
+List<Employee> findAllByOrderByNameDesc();
+}
+```
+#### 2. Sorting with the Sort class
+Sort Parameter In Query Methods
+```java
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee,
+Long> {
+List<Employee> findByDepartment(String department, Sort sort);
+}
+//Using the Sort class
+Sort sort = Sort.by(Sort.Direction.ASC, sortField);
+Sort sort = Sort.by(Sort.Order.asc("name"), Sort.Order.desc("salary"));
+```
+
+## Pagination
+### Key Concepts of Pagination
+- Page: A single chunk of data that contains a subset of the total
+dataset. It is an interface representing a page of data, including
+information about the total number of pages, total number of
+elements, and the current page's data.
+- Pageable: An interface that provides pagination information such as
+page number, page size, and sorting options.
+- PageRequest: A concrete implementation of Pageable that provides
+methods to create pagination and sorting information.
+### Using Pageable
+```java
+Pageable emppagenumber = PageRequest.of(0,10,Sort.by(Sort.Order.asc("employeeId")));
+List<Employee> obj = employeeRepository.findAll(emppagenumber).stream().toList();
+```
+```java
+public interface UserRepository extends JpaRepository<User, Long> {
+Page<User> findAll(Pageable pageable);
+Page<User> findByLastName(String lastName, Pageable pageable);
+}
+//Creating Pageable instance:
+Pageable pageable = PageRequest.of(pageNumber, size,
+Sort.by("lastName").ascending());
+```
+## Projection in Spring Data JPA
+👉 Projection means selecting only specific columns (fields) from an entity instead of fetching the whole entity.
+
+This is useful when you don’t need all data (to save memory, bandwidth, improve performance).
+### 1. Default (Entity) Fetch 
+
+Normally, when you call findAll(), JPA selects all columns of the table:
+```java
+List<Employee> employees = employeeRepository.findAll();
+```
+Generated SQL:
+```java
+SELECT employee_id, name, email, salary FROM employee;
+```
+You get full Employee objects.
+### 2. Interface-based Projection
+You define an interface with getters only for required fields.
+```java
+public interface EmployeeNameEmailProjection {
+    String getName();
+    String getEmail();
+}
+```
+Repository:
+```java
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+    List<EmployeeNameEmailProjection> findBy();
+}
+```
+Usage:
+```java
+List<EmployeeNameEmailProjection> employees = employeeRepository.findBy();
+for (EmployeeNameEmailProjection e : employees) {
+    System.out.println(e.getName() + " - " + e.getEmail());
+}
+```
+SQL Generated:
+```java
+SELECT name, email FROM employee;
+```
+✅ Only name and email fetched, not salary.
+### 3. Class-based (DTO) Projection
+You can map directly to a custom DTO.
+```java
+public class EmployeeDTO {
+    private String name;
+    private String email;
+
+    public EmployeeDTO(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+    // getters
+}
+```
+Repository:
+```java
+@Query("SELECT new com.example.EmployeeDTO(e.name, e.email) FROM Employee e")
+List<EmployeeDTO> findEmployeeNameAndEmail();
+```
+Usage:
+```java
+List<EmployeeDTO> employees = employeeRepository.findEmployeeNameAndEmail();
+```
+### 4. Dynamic Projection
+You can decide projection type at runtime.
+```java
+<T> List<T> findBy(Class<T> type);
+```
+Usage:
+```java
+List<EmployeeNameEmailProjection> projection = employeeRepository.findBy(EmployeeNameEmailProjection.class);
+List<EmployeeDTO> dto = employeeRepository.findBy(EmployeeDTO.class);
+```
+⚡ Why use Projections?
+- Reduce unnecessary data fetching.
+- Improve performance (less data from DB).
+- Return lightweight objects instead of full entities.

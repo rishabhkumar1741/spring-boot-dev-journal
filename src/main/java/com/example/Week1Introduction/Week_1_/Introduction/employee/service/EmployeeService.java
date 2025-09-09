@@ -4,6 +4,9 @@ import com.example.Week1Introduction.Week_1_.Introduction.employee.model.Employe
 import com.example.Week1Introduction.Week_1_.Introduction.employee.model.EmployeeDTO;
 import com.example.Week1Introduction.Week_1_.Introduction.employee.repository.EmployeeRepository;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -39,7 +42,9 @@ public class EmployeeService {
     }
 
     public List<EmployeeDTO> test() {
-        List<Employee> obj = employeeRepository.rishabh("Rishabh","R");
+//        List<Employee> obj = employeeRepository.findAll(Sort.by(Sort.Order.desc("email"),Sort.Order.desc("name")));
+        Pageable emppagenumber = PageRequest.of(0,10,Sort.by(Sort.Order.asc("employeeId")));
+        List<Employee> obj = employeeRepository.findAll(emppagenumber).stream().toList();
         if(obj.isEmpty() )
         {
             throw new NoSuchElementException("No element found");

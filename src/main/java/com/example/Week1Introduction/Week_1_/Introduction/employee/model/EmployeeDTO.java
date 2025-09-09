@@ -14,7 +14,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmployeeDTO {
-
+    private Long employeeId;
     @Size(min = 3)
     private String name;
     @EmployeeRoleValidation

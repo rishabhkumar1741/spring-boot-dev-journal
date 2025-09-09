@@ -17,4 +17,5 @@ public interface EmployeeRepository extends JpaRepository<Employee,Long> {
 
     @Query("SELECT e FROM Employee e WHERE e.name LIKE CONCAT('%', :name, '%') OR e.email LIKE CONCAT('%', :email, '%')")
     List<Employee>rishabh(@Param("name") String name, @Param("email") String email);
+
 }
