@@ -1,4 +1,7 @@
 # Spring Boot
+## RoadMap 
+
+
 #### Spring Boot MVC and RESTful APIs
 - [✅ What is a Bean?](#-what-is-a-bean)
 - [🔄 Lifecycle of a Bean in Spring](#-lifecycle-of-a-bean-in-spring)
@@ -54,6 +57,20 @@
   - [2. Interface-based Projection](#2-interface-based-projection)
   - [3. Class-based (DTO) Projection](#3-class-based-dto-projection)
   - [4. Dynamic Projection](#4-dynamic-projection)
+- [🔄 Hibernate Entity Lifecycle States](#-hibernate-entity-lifecycle-states)
+- [🔗 Relationships in JPA](#-relationships-in-jpa)
+- [🔄 Cascading in JPA and @Transactional](#-cascading-in-jpa-and-transactional)
+- [🔄 Infinite Loop Problem (Serialization)](#-infinite-loop-problem-serialization)
+
+### Production ready Spring Boot Features
+- [Spring Boot DevTools]()
+- [Audting]()
+- [Making Third party API calls](#making-third-party-api-calls-with-restclient)
+  - [RestClient](#Building-RestClient)
+    - []()
+  - [WebCient (WebFlux)]()
+- [Logging](#logging)
+- 
 
 ### ✅ What is a Bean?
 
@@ -663,6 +680,7 @@ Add this to your pom.xml to enable Bean Validation using Hibernate Validator:
 | `@Past`         | Date must be in the past                    | `@Past private LocalDate dob;`        |
 
 Use these in DTOs or request models to enforce field-level constraints.
+
 
 ### 📥 3. Validating Request Body
 ```java
@@ -1302,20 +1320,33 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL
 - @GeneratedValue(strategy = GenerationType.IDENTITY)
 - @Column(name = "name", nullable = false, length = 50)
 - @CreationTimestamp and @UpdateTimestamp
+- Enumerated
+```java
+  public enum Gender {
+    MALE,
+    FEMALE,
+    OTHER;
+  }
+  
+    @Enumerated(EnumType.STRING)                // store values like "MALE", "FEMALE"
+    @Column(nullable = false, length = 10)
+    private Gender gender;
+```
 
 #### Table Annotation
 ```java
 @Table(
-name = "employees",
-catalog = "employee_catalog",
-schema = "hr",
-uniqueConstraints = {
-@UniqueConstraint(columnNames = {"email"})
-},
-indexes = {
-@Index(name = "idx_name", columnList = "name"),
-@Index(name = "idx_department", columnList = "department")
-}
+    name = "employees",
+    catalog = "employee_catalog",
+    schema = "hr",
+    uniqueConstraints = {
+            @UniqueConstraint(name = 'email_unique',columnNames = {"email"}),
+            @UniqueConstraint(name = 'email_unique',columnNames = {"email"}),
+    },
+    indexes = {
+        @Index(name = "idx_name", columnList = "name"),
+        @Index(name = "idx_department", columnList = "department")
+    }
 )
 ```
 
@@ -1536,3 +1567,434 @@ List<EmployeeDTO> dto = employeeRepository.findBy(EmployeeDTO.class);
 - Reduce unnecessary data fetching.
 - Improve performance (less data from DB).
 - Return lightweight objects instead of full entities.
+
+## 🔄 Hibernate Entity Lifecycle States
+- ***EntityManager***  is the low-level JPA runtime API that manages entity state, queries, flush, transaction boundaries, first-level cache, etc.
+- ***JpaRepository<T,ID>*** is a Spring Data interface you use in your code to avoid boilerplate (CRUD, paging, derived queries).
+- ***SimpleJpaRepository*** is Spring Data’s default runtime implementation of JpaRepository. It wraps an EntityManager and delegates the actual work to it.
+
+
+
+Hibernate defines 4 main entity states (lifecycle stages) while working with the database:
+1. Transient State
+2. Persistent State
+3. Detached State
+4. Removed State
+
+### 1. Transient State
+- When: You create a new object using new keyword.
+- Not associated with Hibernate session.
+- Not saved in DB.
+- Hibernate doesn’t track it.
+
+Example:
+
+```groovy
+Patient p = new Patient(); // Transient
+p.setName("Rishabh");
+```
+- If app crashes → object is gone.
+## 2. Persistent State
+- When: Object is saved in DB and attached to Hibernate Session (Persistence Context).
+- Any change you make → Hibernate detects (dirty checking) and updates DB at flush/commit.
+- Example
+```groovy
+Session session = sessionFactory.openSession();
+session.beginTransaction();
+
+Patient p = new Patient();
+p.setName("Rishabh");
+session.save(p); // Persistent
+```
+- Now if you do:
+
+```groovy 
+p.setName("Nayra"); 
+```
+→ Hibernate will auto-update DB when transaction commits.
+# 3. Detached State
+- When: Object was persistent but session is closed OR object is evicted.
+- Not tracked anymore.
+- Entity was persistent, but now the persistence context is closed or entity is manually detached.
+- Hibernate no longer tracks it. Changes won’t go to DB unless you merge().
+- Example:
+```text
+em.close();  // p becomes Detached
+e.setName("Changed"); // DB won’t update automatically
+em.merge(e); // Reattach, now changes will persist
+```
+
+## 4. Removed State
+- Entity is marked for deletion from DB.
+- Still tracked until flush/commit, then Hibernate issues DELETE.
+- Example:
+```groovy
+em.remove(e); // e is in Removed state
+```
+- After commit → DB record deleted.
+
+### 🔁 State Transitions (Simple Diagram)
+```
+new (Transient)
+│ persist()
+▼
+Persistent ── remove() ──► Removed
+│ detach() / clear() / close()
+▼
+Detached ── merge() ──► Persistent
+```
+👉 So in one line:
+The persistence context is like Hibernate’s "memory box" of entities. If an entity is inside it (persistent), Hibernate tracks and syncs changes automatically.
+
+## 📌 Summary (states)
+- persist() → makes new object → persistent.
+- merge() → copies state of a detached object into a new persistent object.
+- remove() → marks entity as deleted.
+- flush() → forces Hibernate to sync changes with DB now.
+- commit() → flushes automatically + commits the transaction.
+- Dirty checking → if you change a managed entity, Hibernate auto-detects and updates DB.
+- Detached objects → changes are ignored until reattached with merge()
+
+## 🔗 Relationships in JPA
+In a relational database, entities are linked using foreign keys.
+In JPA we model these with annotations:
+- @OneToOne
+- @OneToMany
+- @ManyToOne
+- @ManyToMany
+### 1. One-to-One
+👉 One row in Table A relates to one row in Table B.
+
+Example: Employee ↔ Address
+
+
+
+
+### 🏷️ Owning Side vs Inverse Side
+- Owning side → the entity that has the foreign key column in DB.
+- Inverse side (mappedBy) → just mirrors the relationship; no FK column
+#### 👉 In the example above:
+- Employee.department = Owning side (it has @JoinColumn).
+- Department.employees = Inverse side (mappedBy = "department").
+
+⚠️ Rule: Only owning side updates the database relationship.
+
+Updating inverse side alone does nothing unless you also set the owning side.
+### Example of syncing both sides
+```groovy
+Department d = new Department();
+d.setName("IT");
+
+Employee e = new Employee();
+e.setName("Amit");
+e.setDepartment(d);       // owning side
+
+d.getEmployees().add(e);  // inverse side
+
+em.persist(d);
+em.persist(e);
+
+```
+
+
+## 🔄 Cascading in JPA and @Transactional
+
+- @Transactional wraps code in a DB transaction and provides a persistence context (first-level cache).
+- Cascade controls what happens to related entities when you call operations (persist/merge/remove) on an entity inside a transaction.
+- They work together: cascade defines what to do; @Transactional ensures the DB changes get committed (or rolled back) as one unit.
+
+- Cascade tells Hibernate what to do with child entities when the parent changes.
+- Options:
+  - CascadeType.PERSIST → saving parent also saves child.
+  - CascadeType.MERGE → merging parent also merges child.
+  - CascadeType.REMOVE → removing parent also removes child.
+  - CascadeType.ALL → applies all above.
+  - orphanRemoval = true → if a child is removed from parent collection, it’s deleted from DB.
+#### Example with Cascade
+```groovy
+@Entity
+public class Department {
+    @Id @GeneratedValue
+    private Long id;
+    private String name;
+
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Employee> employees = new ArrayList<>();
+}
+```
+Now:
+```groovy
+Department d = new Department();
+Employee e = new Employee();
+e.setDepartment(d);
+
+d.getEmployees().add(e);
+
+em.persist(d); // will also persist e automatically because of cascade
+```
+## 🔁  Infinite Loop Problem (Serialization)
+When you return JPA entities (like via REST API with Jackson), bidirectional relationships can cause an infinite loop:
+- Department → Employee → Department → Employee → …
+
+This happens because JSON serializer keeps traversing both sides.
+
+### ✅ Solutions
+1) Jackson annotations
+```java
+@Entity
+public class Department {
+    @OneToMany(mappedBy = "department")
+    @JsonManagedReference   // forward side
+    private List<Employee> employees = new ArrayList<>();
+}
+
+@Entity
+public class Employee {
+    @ManyToOne
+    @JsonBackReference      // back side
+    private Department department;
+}
+```
+- @JsonManagedReference → serialized normally.
+- @JsonBackReference → ignored to stop recursion
+2. Use @JsonIgnore
+```java
+@ManyToOne
+@JsonIgnore
+private Department department;
+```
+3) Use DTOs (Recommended for APIs)
+
+Instead of exposing entities directly, map them to DTOs (Data Transfer Objects) and only include fields you need
+
+### ✅ Quick Recap
+- Owning side = side with FK + updates DB (@JoinColumn).
+- Inverse side = side with mappedBy = just for reading.
+- Cascade = parent actions automatically apply to children.
+- Infinite loop fix = use `@JsonManagedReference/@JsonBackReference`, or `@JsonIgnore`, or` DTOs`
+
+### N+1 problem in JPA — what it is, why it happens, and how to fix it
+Short version: the N+1 problem happens when loading a collection or related entity causes one query to load the root entities and then N additional queries — one per row — to load the related data. That turns a single logical fetch into many SQL queries and kills performance.
+
+Concrete example (typical)
+
+Entities:
+```groovy
+@Entity
+public class Author {
+    @Id Long id;
+    String name;
+    @OneToMany(mappedBy = "author", fetch = FetchType.LAZY)
+    List<Book> books;
+}
+
+@Entity
+public class Book {
+    @Id Long id;
+    String title;
+    @ManyToOne(fetch = FetchType.LAZY)
+    Author author;
+}
+
+```
+Repository code:
+```groovy
+List<Author> authors = authorRepository.findAll(); // returns 10 authors
+
+for (Author a : authors) {
+    System.out.println(a.getBooks().size()); // access LAZY collection
+}
+```
+What Hibernate will typically do (SQL):
+1. SELECT * FROM author; — 1 query (N = number of authors = 10)
+2. For each author when getBooks() is accessed:
+   - SELECT * FROM book WHERE author_id = ?; — 10 queries (one per author)
+
+Total = 1 + N queries = 11 queries. As N grows, cost grows linearly.
+
+### Why it happens
+- JPA FetchType.LAZY will not load associations initially.
+- When you access the association, JPA issues a separate query per association instance to fetch the data.
+- Default mapping + accessing child collections in a loop is the common trigger
+### Fixes / Alternatives (with examples)
+1) JOIN FETCH to load in a single query
+```groovy
+@Query("SELECT a FROM Author a JOIN FETCH a.books")
+List<Author> findAllWithBooks();
+```
+This will produce a single SQL with a join fetching authors and books. Good for small result sets.
+
+Caveat: JOIN FETCH can produce duplicates at the entity level (use distinct in JPQL) and complicate paging.
+
+
+## Making Third party API CALLS WITH RestClient
+
+### RestClient
+The RestClient is a synchronous HTTP client that offers a modern,
+fluent API. It offers an abstraction over HTTP libraries that allows
+for convenient conversion from a Java object to an HTTP request, and
+the creation of objects from an HTTP response.
+
+### Building RestClient
+```java
+RestClient restClient = RestClient.builder()
+.baseUrl(BASE_URL)
+.defaultHeader(HttpHeaders.AUTHORIZATION,
+encodeBasic(properties.getUsername(),properties.getPassword())
+)
+.build();
+```
+
+### Using the RestClient
+```java
+CustomerResponse customer = restClient.get()
+.uri("/{id}",3)
+.accept(MediaType.APPLICATION_JSON)
+.retrieve()
+.body(CustomerResponse.class);
+```
+- Apart from get(), we have post(), put(), patch() and delete() methods as well.
+
+one more example 
+```java
+@Configuration
+public class RestClientConfig {
+
+//    @Value("${employeeService.base.url}")
+    private String BASE_URL="http://localhost:8080";
+
+    @Bean
+    @Qualifier("employeeRestClient")
+    RestClient getEeployeeServiceRestClient()
+    {
+        return RestClient.builder()
+                .baseUrl(BASE_URL)
+                .defaultHeader(CONTENT_TYPE,APPLICATION_JSON_VALUE)
+                .build();
+    }
+}
+```
+```java
+    @Override
+    public ApiResponse<StudentDTO> addStudent(StudentInputDTO studentInputDTO) {
+        ApiResponse<StudentDTO> newstudent = restClient.post()
+                .uri("/student")
+                .body(studentInputDTO)
+                .retrieve()
+                .body(new ParameterizedTypeReference<ApiResponse<StudentDTO>>() {
+                });
+        return newstudent;
+    }
+```
+
+### Handling Errors in RestClient
+```java
+ResponseEntity response = restClient.delete()
+....
+.onStatus(HttpStatusCode::is4xxClientError,
+(req, res) ->
+logger.error("Couldn't delete "+res.getStatusText())
+)
+.toBodilessEntity();
+```
+
+
+
+
+## Logging
+Logging is the process of tracking all the events that happen after a
+piece of code is run. It is a very important aspect of software
+development as it helps to track where exactly the code crashes and
+thus eases debugging.
+
+A logging framework can be used to perform all the tasks like setting
+log file destinations, customizing log messages , etc.
+
+### SLF4J
+To make logging easier for programmers, Java provides a variety of
+logging frameworks like : log4J, java.util.logging (JUL), tiny log,
+logback, etc.
+
+Spring Boot comes with SLF4J inbuilt, which is an abstraction of all
+these logging frameworks. SLF4J stands for Simple Logging Façade for
+Java. It allows users to work with any of the logging frameworks with
+a single dependency.
+
+### Elements of Logging Framework
+
+Every logging framework comes with three elements.
+
+1. Logger — capture the messages
+2. Formatter — formats the messages captured by the logger
+3. Handler — Dispatches the messages by printing them on the console ,
+   or storing them in a file , sending an email, etc.
+
+###  Log Levels
+The messages logged can be of various security levels . Spring Boot
+supports five log levels which are
+1. FATAL – fatal error crashing the system
+2. ERROR — runtime errors
+3. WARN — warning
+4. INFO — events occurring at the run time
+5. DEBUG — Information about the flow of the system
+6. TRACE — more detailed information about the flow of the system
+
+Example
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@RequestMapping("/student")
+@RequiredArgsConstructor
+public class StudentController {
+    private final StudentService studentService;
+    Logger log = LoggerFactory.getLogger(StudentController.class); // returns an SLF4J Logger instance tied to the provided class name (usually the fully-qualified class name).returns an SLF4J Logger instance tied to the provided class name (usually the fully-qualified class name).
+
+    @GetMapping
+    public List<StudentOutputDTO> getAllStudent() {
+        log.warn("Warn message");
+        log.info("info message");
+        log.debug("debug message");
+
+        return studentService.getAllStudent();
+    }
+}
+```
+### Setting Log Levels
+When you enable a level, Log4j logs these
+events at that level and all levels above it.
+For example, enabling WARN events will show
+WARN through FATAL events, but not INFO
+through TRACE.
+
+logging.level.root=INFO
+logging.level.com.myPackageName =DEBUG
+![rishabh](src/main/resources/static/log level.png)
+
+Logging levels & when to use them
+
+- Ordered (highest → lowest severity): ERROR > WARN > INFO > DEBUG > TRACE.
+- ERROR: fatal errors, exceptions that prevent normal flow.
+- WARN: something suspicious that may need attention but isn't fatal.
+- INFO: high-level runtime events (startup, major actions). Good for production logs.
+- DEBUG: detailed diagnostic data for developers (enable in dev or troubleshooting).
+- TRACE: extremely fine-grained, usually too verbose for normal use.
+
+you can also configure Logback with logback-spring.xml for more advanced control
+```xml
+logging:
+  level:
+    com.example.Week1Introduction.Week_1_.Introduction.student.StudentController: DEBUG
+```
+### Log Formatters
+The log messages can be formatted and customized according to our
+requirements by setting colors , message format , etc.
+
+logging.pattern.console= %d [%level] %c{1.} [%t] %m%n
+
+- %d — date
+- % level — log level
+- %c — class path
+- %t — thread executing
+- %m — message
+- %n — new line

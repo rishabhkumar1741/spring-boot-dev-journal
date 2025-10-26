@@ -34,6 +34,6 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
         int code = ((ServletServerHttpResponse) response).getServletResponse().getStatus();
         HttpStatus statusCode = HttpStatus.valueOf(code);
         res.setTimestamp(OffsetDateTime.now());
-        return new ResponseEntity<>(res,statusCode);
+        return res;
     }
 }

@@ -6,8 +6,13 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # create / create-drop / validate also possible
+      ddl-auto: create  # create / create-drop / validate also possible
     show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+#    properties:
+#      hibernate:
+#        format_sql: true
+logging:
+  level:
+    com.example.Week1Introduction.Week_1_.Introduction.student.StudentController: DEBUG
+
+

@@ -13,7 +13,6 @@ public class Week1IntroductionApplication
 	public static void main(String[] args) {
 		SpringApplication.run(Week1IntroductionApplication.class, args);
 
-
 	}
 
 

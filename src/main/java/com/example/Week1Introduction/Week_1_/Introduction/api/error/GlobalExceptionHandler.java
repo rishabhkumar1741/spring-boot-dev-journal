@@ -3,28 +3,19 @@ package com.example.Week1Introduction.Week_1_.Introduction.api.error;
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ApiResponse;
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ErrorCode;
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ErrorDetail;
-import com.example.Week1Introduction.Week_1_.Introduction.common.exception.EmployeeCreationException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.ConstraintViolationException;
-import org.hibernate.dialect.BooleanDecoder;
-import org.springframework.boot.context.properties.bind.BindResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.http.server.ServletServerHttpResponse;
-import org.springframework.validation.BindingResult;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import javax.swing.text.html.parser.Entity;
 import java.util.HashMap;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -36,15 +27,6 @@ public class GlobalExceptionHandler {
         urldata.put("code",String.valueOf(response.getStatus()));
         return urldata;
     }
-
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<ApiResponse<Void>> handleResourceNotFound(NoSuchElementException exception, HttpServletRequest req)
-    {
-        ApiResponse<Void> body = ApiResponse.error(ErrorCode.NOT_FOUND.name(),exception.getMessage(),null);
-        body.setPath(req.getRequestURI());
-        return new ResponseEntity<>(body,HttpStatus.NOT_FOUND);
-    }
-
 
 
 
@@ -59,15 +41,32 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body,HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<Void>> runtimeExceptionMethod(RuntimeException runtimeException, HttpServletRequest request, HttpServletResponse response)
-    {
-        System.out.println("RuntimeException ====================================================");
-        ApiResponse<Void> body = ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.name(),runtimeException.getMessage(),null);
-        HashMap<String,String> data = getPath( request,  response);
-        body.setPath(data.get("url"));
-        body.setCode(data.get("code"));
-        return new ResponseEntity<ApiResponse<Void>>(body,HttpStatus.INTERNAL_SERVER_ERROR);
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidFormat(HttpMessageNotReadableException e, HttpServletRequest req) {
+        Throwable cause = e.getCause();
+
+        if (cause instanceof InvalidFormatException invalidFormatEx) {
+            // Check if the field that failed is dateOfBirth (optional)
+            String fieldName = invalidFormatEx.getPath().isEmpty() ? "unknown" : invalidFormatEx.getPath().get(0).getFieldName();
+            if ("dateOfBirth".equals(fieldName)) {
+                ErrorDetail detail = new ErrorDetail(fieldName, "Invalid date format. Expected 'yyyy-MM-dd'", "InvalidFormat");
+                ApiResponse<Void> body = ApiResponse.error(ErrorCode.VALIDATION_ERROR.name(), "Invalid input provided", List.of(detail));
+                return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+            }
+        }
+
+        // Generic fallback
+        ErrorDetail detail = new ErrorDetail("dateOfBirth", "Invalid request format", "InvalidFormat");
+        ApiResponse<Void> body = ApiResponse.error(ErrorCode.VALIDATION_ERROR.name(), "Invalid input provided", List.of(detail));
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiResponse> runtimeException(RuntimeException ex)
+    {
+        return  new ResponseEntity<>(ApiResponse.error(ErrorCode.BAD_REQUEST.name(), ex.getMessage(), null),HttpStatus.BAD_REQUEST);
+    }
+
+
 
 }
