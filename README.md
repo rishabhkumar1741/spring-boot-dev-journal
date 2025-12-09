@@ -70,6 +70,12 @@
     - []()
   - [WebCient (WebFlux)]()
 - [Logging](#logging)
+
+### 🛡️ Spring Security
+- [Cross-Site Request Forgery](#cross-site-request-forgery-csrf)
+- [Adding Spring Security](#adding-spring-security)
+- [Authentication and Authorization](#authentication-and-authorization)
+- [Internal working of Spring Security](#internal-working-of-spring-security)
 - 
 
 ### ✅ What is a Bean?
@@ -1998,3 +2004,46 @@ logging.pattern.console= %d [%level] %c{1.} [%t] %m%n
 - %t — thread executing
 - %m — message
 - %n — new line
+
+
+# 🛡️ Spring Security
+
+## Security Attacks
+
+### Cross-Site Request Forgery (CSRF)
+- Cross-Site Request Forgery (CSRF) is an attack that tricks a user into
+performing actions on a web application in which they are
+authenticated, without their consent. This is achieved by exploiting
+the web application's trust in the user's browser.
+- For example, if a banking site doesn't protect against CSRF, an
+attacker could trick a logged-in user into making a bank transfer
+without their knowledge.
+- How to avoid
+    1. Maintain user session on server with the xcsrf token. This token
+               should be very unpredictable.
+    2. Go STATELESS and manage authentication with the JWT token.
+
+
+
+### Adding Spring Security
+In a Spring boot application, we only need to include the spring-bootstarter-security dependency and Spring boot auto-configured the
+security with sensible defaults defined in WebSecurityConfiguration
+class.
+```java
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+```
+### Authentication and Authorization
+Authentication is the process of verifying the identity of a user. It ensures that the user is
+who they claim to be. Authentication typically involves validating credentials, such as a
+username and password, and creating a security context for the user
+
+Authorization is the process of determining whether an authenticated user has the
+necessary permissions to access a particular resource or perform an action. It controls
+what an authenticated user can or cannot do.
+
+### Internal working of Spring Security
+![rishabh](src/main/resources/static/JPA4.png)
+![rishabh](src/main/resources/static/JPA5.png)
