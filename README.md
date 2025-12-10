@@ -2047,3 +2047,227 @@ what an authenticated user can or cannot do.
 ### Internal working of Spring Security
 ![rishabh](src/main/resources/static/JPA4.png)
 ![rishabh](src/main/resources/static/JPA5.png)
+
+- In a Spring Boot application,
+  SecurityFilterAutoConfiguration
+  automatically registers the
+  DelegatingFilterProxy filter with the name 
+  springSecurityFilterChain.
+- Once the request reaches to
+  DelegatingFilterProxy, Spring delegates the
+  processing to FilterChainProxy bean that
+  utilizes the SecurityFilterChain to execute
+  the list of all filters to be invoked for the
+  current request.
+![rishabh](src/main/resources/static/JPA6.png)
+
+### Default behaviour of Spring-Security
+- Creates a bean named springSecurityFilterChain. Registers the Filter with a bean
+named springSecurityFilterChain with the Servlet container for every request.
+- HTTP basic authentication for authenticating requests made with remoting protocols and
+web services.
+- Generate a default login form.
+- Creates a user with a username of user and a password that is logged to the console.
+- Protects the password storage with BCrypt.
+- Enables logout feature.
+- Other features such as protection from CSRF attacks and session fixation
+
+### Core Spring Security Components
+1. **UserDetails** : 
+
+   - The UserDetails interface represents a user in the Spring Security framework.
+      It provides methods to get user information such as username, password, and authorities.
+   - Purpose: To encapsulate user information, including authentication and authorization details.
+   - Implementation: You can use it to extend your User Entity.
+2. **UserDetailsService**
+   - The UserDetailsService interface is a core component in Spring Security that is used to
+         retrieve user-related data. It has a single method: loadUserByUsername
+   - Purpose: To fetch user details from a datasource (e.g., database) based on the username.
+   - Implementation: You typically implement this interface to load user details, such as username, password, and roles, from your own user repository.
+3. **InMemoryUserDetailsManager**
+      - The InMemoryUserDetailsManager is a Spring Security provided implementation of
+      UserDetailsService that stores user information in memory.
+      - Purpose: To store user details in memory, typically for testing or small applications.
+      You define users directly in the configuration.
+4. **PasswordEncoder**
+   - The PasswordEncoder interface is used for encoding and validating passwords. It has methods
+   for encoding raw passwords and matching encoded passwords.
+   - Purpose: To securely hash passwords before storing them and to verify hashed passwords
+   during authentication.
+   - Common Implementations:
+     - BCryptPasswordEncoder
+     - Pbkdf2PasswordEncoder
+     - SCryptPasswordEncoder
+
+![rishabh](src/main/resources/static/JPA7.png)
+
+## ⭐ SPRING SECURITY FULL FLOW
+### 1️⃣ When a request comes to the server
+#### Step 1 → Request enters Servlet Filter Chain
+- Every HTTP request first goes into Java Servlet Filters.
+- One of these filters is:
+  - DelegatingFilterProxy → FilterChainProxy`
+- FilterChainProxy now calls Spring Security Filter Chain.
+```groovy
+Note
+The SecurityFilterChain is based on the Chain of Responsibility design pattern.
+Every filter decides:
+    Should I authenticate?
+    Should I skip?
+    Should I throw an error?
+    Should I pass to the next filter?
+```
+### 2️⃣ Spring Security Filter Chain begins
+Spring Security creates a chain of filters like:
+- CorsFilter
+- CsrfFilter
+- LogoutFilter
+- UsernamePasswordAuthenticationFilter (for form login)
+- BearerTokenAuthenticationFilter / Your JWT Filter
+- FilterSecurityInterceptor
+
+These filters run in fixed order.
+```groovy
+Note
+2️⃣ Every filter checks SecurityContext FIRST
+This is VERY important:
+    👉 Before doing any authentication, every filter checks:
+
+            SecurityContextHolder.getContext().getAuthentication()
+
+If authentication is already present:
+    - Filter skips authentication
+    - Request continues
+This prevents duplicate authentication.
+```
+### 3️⃣ Authentication happens inside the filter chain
+- 3.1 If JWT request
+  - Your custom JWT filter (extends OncePerRequestFilter) runs.
+  - Flow inside JWT Filter:
+    - Read Authorization: Bearer token
+    - Validate token
+    - Extract username
+    - Call UserDetailsService.loadUserByUsername()
+    - Create Authentication object
+    - Put it inside SecurityContext
+  - 👉 If the user is authenticated → SecurityContext is filled → Next filters do NOT authenticate again.
+
+- 3.2 If Form Login request
+  - This uses:
+  - UsernamePasswordAuthenticationFilter
+  - Flow:
+    - Reads username + password from request
+    - Creates a UsernamePasswordAuthenticationToken
+    - Passes it to AuthenticationManager.authenticate()
+
+```groovy
+Note
+3️⃣ JWT filters must run BEFORE UsernamePasswordAuthenticationFilter
+Reason:
+    JWT requests do not send username/password.
+    If JWT filter doesn’t run before, Spring might try form-login authentication.
+That’s why we always configure:
+
+http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+```
+### 4️⃣ AuthenticationManager (CORE)
+- AuthenticationManager → interface
+- Most used implementation → ProviderManager
+- ProviderManager has a list:
+- ``` List<AuthenticationProvider> providers```
+- It loops through each provider.
+```groovy
+Note
+4️⃣ AuthenticationManager NEVER does real authentication
+Many people think AuthenticationManager authenticates — it DOES NOT.
+AuthenticationManager delegates authentication to AuthenticationProviders.
+Actual authentication is done inside:
+    DaoAuthenticationProvider
+    JwtAuthenticationProvider (if custom)
+    LdapAuthenticationProvider
+    etc.
+```
+### 5️⃣ AuthenticationProvider (DECIDES AUTH)
+- Example provider:
+- DaoAuthenticationProvider
+  - Calls UserDetailsService.loadUserByUsername()
+  - Gets UserDetails
+  - Uses PasswordEncoder.matches() to check password
+  - If valid → returns an Authentication object
+
+```groovy
+Note
+5️⃣ UserDetailsService is used ONLY during Authentication
+        UserDetailsService is NOT used during authorization
+        It is only used to load user data during login or JWT validation.
+```
+### 6️⃣ UserDetailsService
+Your implementation:
+```groovy
+MyUserDetailsServiceImpl implements UserDetailsService
+```
+Method:
+```groovy
+UserDetails loadUserByUsername(String username)
+```
+Returns a UserDetails object (contains username, password, authorities)
+
+Note
+```groovy
+Note
+6️⃣ SecurityContext uses ThreadLocal
+SecurityContextHolder stores Authentication using ThreadLocal.
+        Meaning:
+            Each request thread gets its own SecurityContext
+            When request completes, SecurityContext is cleared
+```
+### 7️⃣ PasswordEncoder
+- Responsible for:
+  - encode(password)
+  - matches(rawPassword, encodedPassword)
+- Most used: BCryptPasswordEncoder
+```groovy
+Note
+7️⃣ Difference between Authentication and Authorization
+Authentication = Who are you? 
+        Username, password, token verification
+        Done by filters + provider
+Authorization = What can you access?
+        Role + URL access check
+        Done by FilterSecurityInterceptor
+```
+
+### 8️⃣ After authentication → SecurityContext is filled
+```groovy
+SecurityContextHolder.getContext().setAuthentication(authObj)
+```
+Now the user is considered logged in.
+```text
+Note
+8️⃣ FilterSecurityInterceptor uses AccessDecisionManager
+Important internal component:
+    When FilterSecurityInterceptor needs to check a URL
+    It delegates to AccessDecisionManager
+AccessDecisionManager uses voters like: 
+    RoleVoter
+    AuthenticatedVoter
+These voters decide allow or deny.
+```
+### 9️⃣ Authorization (URL access check)
+- This is done by:
+- ⭐ FilterSecurityInterceptor
+- It checks your rules from:
+```text
+http.authorizeHttpRequests()
+```
+- This filter verifies:
+  - Does the user have required ROLE?
+  - If not → returns 403 Forbidden.
+```groovy
+Request Flow: 
+Servlet Filters →  DelegatingFilterProxy → FilterChainProxy → Spring Security Filters → (JWT / UsernamePassword filters) →
+AuthenticationManager → ProviderManager → AuthenticationProvider →
+UserDetailsService + PasswordEncoder → Authentication Success → SecurityContext →
+FilterSecurityInterceptor (Authorization) → Controller
+
+```
