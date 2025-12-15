@@ -1,12 +1,16 @@
 package com.example.Week1Introduction.Week_1_.Introduction.system;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
 
+@Getter
+@Setter
 @Entity
 public class QC_EGMS_USERS implements UserDetails {
     @Id
@@ -15,6 +19,14 @@ public class QC_EGMS_USERS implements UserDetails {
     @Column(unique = true)
     private String email;
     private String password;
+    public QC_EGMS_USERS() {
+        // default constructor required by ModelMapper
+    }
+
+    public QC_EGMS_USERS(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
 
 
     @Override

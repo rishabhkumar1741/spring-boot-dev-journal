@@ -22,4 +22,6 @@ logging:
 #    root: DEBUG
     com.example.Week1Introduction.Week_1_.Introduction: DEBUG
 
+jwt:
+  secretKey: qwertyuioplkjhgfdsazxcvbnm1234567890qwertyuioplkjhgfdsazx
 

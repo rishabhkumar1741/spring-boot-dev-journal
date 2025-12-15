@@ -76,7 +76,25 @@
 - [Adding Spring Security](#adding-spring-security)
 - [Authentication and Authorization](#authentication-and-authorization)
 - [Internal working of Spring Security](#internal-working-of-spring-security)
-- 
+  - [Default behaviour of Spring-Security](#default-behaviour-of-spring-security)
+- [Core Spring Security Components](#core-spring-security-components)
+- [⭐ SPRING SECURITY FULL FLOW](#-spring-security-full-flow)
+  - [1️⃣ When a request comes to the server](#1-when-a-request-comes-to-the-server)
+  - [2️⃣ Spring Security Filter Chain begins](#2-spring-security-filter-chain-begins)
+  - [3️⃣ Authentication happens inside the filter chain](#3-authentication-happens-inside-the-filter-chain)
+  - [4️⃣ AuthenticationManager (CORE)](#4-authenticationmanager-core)
+  - [5️⃣ AuthenticationProvider (DECIDES AUTH)](#5-authenticationprovider-decides-auth)
+  - [6️⃣ UserDetailsService](#6-userdetailsservice)
+  - [7️⃣ PasswordEncoder](#7-passwordencoder)
+  - [8️⃣ After authentication → SecurityContext is filled](#8-after-authentication--securitycontext-is-filled)
+  - [9️⃣ Authorization (URL access check)](#9-authorization-url-access-check)
+- [Default SecurityFilterChain Config](#default-securityfilterchain-config)
+- [Understanding JWT](#understanding-jwt)
+  - [Why use JSON Web Token (JWT)](#why-use-json-web-token-jwt)
+  - [JSON Web Token (JWT)](#json-web-token-jwt)
+  - [JWT Dependencies](#jwt-dependencies)
+  - 
+
 
 ### ✅ What is a Bean?
 
@@ -2061,7 +2079,7 @@ what an authenticated user can or cannot do.
   current request.
 ![rishabh](src/main/resources/static/JPA6.png)
 
-### Default behaviour of Spring-Security
+### Default behaviour of Spring Security
 - Creates a bean named springSecurityFilterChain. Registers the Filter with a bean
 named springSecurityFilterChain with the Servlet container for every request.
 - HTTP basic authentication for authenticating requests made with remoting protocols and
@@ -2119,12 +2137,26 @@ Every filter decides:
 ```
 ### 2️⃣ Spring Security Filter Chain begins
 Spring Security creates a chain of filters like:
-- CorsFilter
+
+The default SecurityFilterChain includes many filters.
+
+Here are the important ones:
+
+- WebAsyncManagerIntegrationFilter
+- SecurityContextPersistenceFilter
+- HeaderWriterFilter
+- CorsFilter (if configured)
 - CsrfFilter
 - LogoutFilter
-- UsernamePasswordAuthenticationFilter (for form login)
-- BearerTokenAuthenticationFilter / Your JWT Filter
-- FilterSecurityInterceptor
+- UsernamePasswordAuthenticationFilter
+- DefaultLoginPageGeneratingFilter
+- BasicAuthenticationFilter
+- RequestCacheAwareFilter
+- SecurityContextHolderAwareRequestFilter
+- AnonymousAuthenticationFilter
+- SessionManagementFilter
+- ExceptionTranslationFilter
+- FilterSecurityInterceptor ← authorization check
 
 These filters run in fixed order.
 ```groovy
@@ -2270,4 +2302,81 @@ AuthenticationManager → ProviderManager → AuthenticationProvider →
 UserDetailsService + PasswordEncoder → Authentication Success → SecurityContext →
 FilterSecurityInterceptor (Authorization) → Controller
 
+```
+
+### Default SecurityFilterChain Config
+
+-  authorizeRequests() restricts access based on RequestMatcher implementations.
+-  authenticated() requires that all endpoints called be authenticated before proceeding in the
+filter chain.
+-  formLogin() calls the default FormLoginConfigurer class that loads the login page to
+authenticate via username-password and accordingly redirects to corresponding failure or
+success handlers.
+-  csrf() to cofigure the csrf protection
+```groovy
+@Bean
+SecurityFilterChain securityConfig(HttpSecurity http) throws Exception {
+
+    http
+        .csrf(csrf -> csrf.disable())                  // Disable CSRF for JWT
+        .cors(cors -> {})                              // Enable CORS
+        .sessionManagement(sess ->
+            sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // No session for JWT
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/auth/**").permitAll()   // Public URLs
+            .requestMatchers("/admin/**").hasRole("ADMIN")
+            .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
+            .anyRequest().authenticated()              // Everything else must be authenticated
+        )
+        .authenticationProvider(authenticationProvider) // Dao/Auth provider
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class); // Custom JWT filter
+
+    return http.build();
+}
+
+```
+
+### Understanding JWT
+
+#### Why use JSON Web Token (JWT)
+1. Stateless
+2. Scalable in Distributed Systems
+3. Cross domain authentication
+4. Ideal for Decentralized systems and microservices
+5. Highly secure
+
+#### JSON Web Token (JWT)
+
+- JWT is a compact, URL-safe means of representing claims to be transferred between two parties.
+- JWT is often used to transmit non-sensitive data that doesn't require confidentiality but still needs integrity and authenticity. This includes user identifiers, roles, permissions, and other claims necessary for making access control decisions.
+  ![rishabh](src/main/resources/static/JPA8.png)
+![rishabh](src/main/resources/static/JPA9.png)
+![rishabh](src/main/resources/static/JPA10.png)
+
+
+#### JWT Dependencies
+```JAWA
+
+<!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api -->
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-api</artifactId>
+    <version>0.12.6</version>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-impl -->
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-impl</artifactId>
+    <version>0.12.6</version>
+    <scope>runtime</scope>
+</dependency>
+
+<!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson -->
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-jackson</artifactId>
+    <version>0.12.6</version>
+    <scope>runtime</scope>
+</dependency>
 ```
