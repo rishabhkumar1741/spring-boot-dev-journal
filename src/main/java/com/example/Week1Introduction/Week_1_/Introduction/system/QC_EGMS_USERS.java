@@ -19,6 +19,12 @@ public class QC_EGMS_USERS implements UserDetails {
     @Column(unique = true)
     private String email;
     private String password;
+    private String firstName;
+    private String lastName;
+    private String phoneNumber;
+    @Column(unique = true,nullable = false)
+    private String username;
+
     public QC_EGMS_USERS() {
         // default constructor required by ModelMapper
     }
@@ -27,7 +33,6 @@ public class QC_EGMS_USERS implements UserDetails {
         this.email = email;
         this.password = password;
     }
-
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -41,6 +46,6 @@ public class QC_EGMS_USERS implements UserDetails {
 
     @Override
     public String getUsername() {
-        return this.email;
+        return this.username;
     }
 }

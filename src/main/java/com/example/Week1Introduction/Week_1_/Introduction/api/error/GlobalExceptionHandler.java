@@ -3,6 +3,7 @@ package com.example.Week1Introduction.Week_1_.Introduction.api.error;
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ApiResponse;
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ErrorCode;
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ErrorDetail;
+import com.example.Week1Introduction.Week_1_.Introduction.common.exception.NotFoundError;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -65,6 +66,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse> runtimeException(RuntimeException ex)
     {
         return  new ResponseEntity<>(ApiResponse.error(ErrorCode.BAD_REQUEST.name(), ex.getMessage(), null),HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(NotFoundError.class)
+    public ResponseEntity<ApiResponse> notFoundError(RuntimeException ex)
+    {
+        return new ResponseEntity<>(ApiResponse.error(ErrorCode.BAD_REQUEST.name(), ex.getMessage(), null),HttpStatus.BAD_REQUEST);
+
     }
 
 

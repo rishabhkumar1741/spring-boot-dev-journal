@@ -7,6 +7,5 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepo extends  JpaRepository<QC_EGMS_USERS,Long> {
-
-    Optional<QC_EGMS_USERS> findByEmail(String user);
+    Optional<QC_EGMS_USERS> findByUsername(String user);
 }

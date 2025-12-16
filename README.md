@@ -93,7 +93,10 @@
   - [Why use JSON Web Token (JWT)](#why-use-json-web-token-jwt)
   - [JSON Web Token (JWT)](#json-web-token-jwt)
   - [JWT Dependencies](#jwt-dependencies)
-  - 
+- [Creation and Verification of JWT](#creation-and-verification-of-jwt)
+  - [create and login](#create-and-login-)
+  - [Authenticating requests using JWT](#authenticating-requests-using-jwt)
+
 
 
 ### ✅ What is a Bean?
@@ -2380,3 +2383,296 @@ SecurityFilterChain securityConfig(HttpSecurity http) throws Exception {
     <scope>runtime</scope>
 </dependency>
 ```
+###  Creation and Verification of JWT
+
+***JwtService.java***
+```java
+@Service
+public class JwtService {
+
+    private static final String SECRET_KEY = "mySecretKeyForJwtGeneration123456";
+
+    private Key getSignKey() {
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    }
+
+    // ✅ Create Token
+    public String generateToken(QC_EGMS_USERS user)
+    {
+        return Jwts.builder()
+                .subject(user.getUsername())
+                .claim("firstName",user.getFirstName())
+                .claim("roles", Set.of("ADMIN","USER"))
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis()+1000*60*60))
+                .signWith(getsecretKey())
+                .compact();
+    }
+
+
+    // ✅ Extract Username
+    public String extractUsername(String token) {
+        return extractClaims(token).getSubject();
+    }
+
+    // ✅ Validate Token
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        String username = extractUsername(token);
+        return username.equals(userDetails.getUsername())
+                && !isTokenExpired(token);
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractClaims(token).getExpiration().before(new Date());
+    }
+
+    private Claims extractClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+}
+```
+#### create and login 
+![rishabh](src/main/resources/static/JPA11.png)
+
+STEP 1 User
+```java
+@Getter
+@Setter
+@Entity
+public class QC_EGMS_USERS implements UserDetails {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    private  Long id;
+    @Column(unique = true)
+    private String email;
+    private String password;
+    private String firstName;
+    private String lastName;
+    private String phoneNumber;
+    @Column(unique = true,nullable = false)
+    private String username;
+
+    public QC_EGMS_USERS() {
+        // default constructor required by ModelMapper
+    }
+
+    public QC_EGMS_USERS(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
+    }
+
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.username;
+    }
+}
+```
+STEP 2 UserService
+```java
+@Service
+@RequiredArgsConstructor
+public class UserService implements UserDetailsService {
+    private final UserRepo userRepo;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepo.findByUsername(username).orElseThrow(()-> new RuntimeException("User not found"));
+    }
+}
+```
+STEP 3 UserRepo
+```java
+@Repository
+public interface UserRepo extends  JpaRepository<QC_EGMS_USERS,Long> {
+    Optional<QC_EGMS_USERS> findByUsername(String user);
+}
+```
+STEP 4 Creation and Verification of JWT
+
+STEP 5 AuthController
+```java
+@RestController
+@RequestMapping("/auth")
+@RequiredArgsConstructor
+public class AuthController {
+    private final AuthService authService;
+
+    @PostMapping("/signup")
+    public ResponseEntity<UserDto> signUp(@RequestBody UserDto userDto, HttpServletResponse response)
+    {
+        System.out.println(userDto.getEmail()+" email");
+        System.out.println(userDto.getUsername()+" username");
+        return ResponseEntity.ok(authService.signUp(userDto));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginDTO loginDTO,HttpServletResponse response)
+    {
+        String token = authService.login(loginDTO);
+        response.setHeader("Authorization", "Bearer " + token);
+        return ResponseEntity.ok(ApiResponse.success(token,"Token is Generated"));
+    }
+}
+```
+Step 6 AuthService
+```java
+@Service
+@AllArgsConstructor
+public class AuthService {
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+    private final UserRepo userRepo;
+    private final ModelMapper modelMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    public String login(LoginDTO loginDTO) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginDTO.getUsername(),loginDTO.getPassword())
+        );
+        QC_EGMS_USERS users = (QC_EGMS_USERS) authentication.getPrincipal();
+        System.out.println(users);
+        return jwtService.generateToken(users);
+    }
+
+    public UserDto signUp(UserDto userDto)
+    {
+        Optional<QC_EGMS_USERS> user = userRepo.findByUsername(userDto.getEmail());
+        if(user.isPresent())
+        {
+            throw new RuntimeException("User already Presend");
+        }else{
+            QC_EGMS_USERS newuser = modelMapper.map(userDto,QC_EGMS_USERS.class);
+            newuser.setPassword(passwordEncoder.encode(newuser.getPassword()));
+            QC_EGMS_USERS savedUser = userRepo.save(newuser);
+            return modelMapper.map(savedUser,UserDto.class);
+        }
+    }
+}
+```
+### Authenticating requests using JWT
+![rishabh](src/main/resources/static/JPA12.png)
+![rishabh](src/main/resources/static/JPA13.png)
+
+
+Step 7 JwtFilter
+```java
+package com.example.Week1Introduction.Week_1_.Introduction.system.JWTAuth;
+
+import com.example.Week1Introduction.Week_1_.Introduction.common.exception.NotFoundError;
+import com.example.Week1Introduction.Week_1_.Introduction.system.QC_EGMS_USERS;
+import com.example.Week1Introduction.Week_1_.Introduction.system.UserRepo;
+import com.example.Week1Introduction.Week_1_.Introduction.system.UserService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Optional;
+
+@RequiredArgsConstructor
+@Component
+public class JwtFilter extends OncePerRequestFilter {
+    private final JwtService jwtService;
+    private final UserRepo userRepo;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
+
+        // 1️⃣ No token → continue filter chain
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 2️⃣ Extract token safely
+        String token = authHeader.substring(7);
+
+        // 3️⃣ Validate expiration
+        if (jwtService.isTokenExpired(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        // 4️⃣ Skip if already authenticated
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 5️⃣ Extract username
+        String username = jwtService.extractUsername(token);
+
+        QC_EGMS_USERS user = userRepo.findByUsername(username)
+                .orElse(null);
+        if (user == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+        // 6️⃣ Set authentication
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        user,
+                        null,
+                        user.getAuthorities()
+                );
+        authentication.setDetails(
+                new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        filterChain.doFilter(request, response);
+    }
+}
+```
+Step 8 Add Filter to Spring Security filter chain
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+@Slf4j
+public class WebSecurityConfig {
+    private final AuthenticationConfiguration authenticationConfiguration;
+    private final JwtFilter jwtFilter;
+
+    @Bean
+    public AuthenticationManager authenticationManager() throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception
+    {
+        log.debug("============================================Sprign Security=================================");
+        httpSecurity
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll()   // Public URLs
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .anyRequest().authenticated())
+                .csrf(csrfConfig -> csrfConfig.disable())
+                .sessionManagement(sessionConfig->sessionConfig.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        return httpSecurity.build();
+    }
+}
+```
+
