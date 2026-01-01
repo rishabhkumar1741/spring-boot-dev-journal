@@ -13,6 +13,10 @@ import java.util.Optional;
 public interface StudentRepo extends JpaRepository<Student,Integer> {
 
 
+    @Query("SELECT s FROM Student s WHERE s.email = :email")
+    Optional<Student> findByEmail(@Param("email") String email);
+
+
     @Query("SELECT  s FROM Student s LEFT JOIN FETCH s.admissionRecord")
     List<Student> findAllStudent();
 

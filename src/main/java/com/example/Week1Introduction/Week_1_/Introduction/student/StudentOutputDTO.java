@@ -18,6 +18,7 @@ import java.util.Set;
 public class StudentOutputDTO {
     private Integer id;
     private String name;
+    private String email;
     private AdmissionRecord admissionRecord;
     private Set<Course> courseList;
 
@@ -25,6 +26,7 @@ public class StudentOutputDTO {
     {
         this.id = student.getId();
         this.name = student.getName();
+        this.email = student.getEmail();
         this.admissionRecord = student.getAdmissionRecord();
         if(this.admissionRecord!=null)
         {

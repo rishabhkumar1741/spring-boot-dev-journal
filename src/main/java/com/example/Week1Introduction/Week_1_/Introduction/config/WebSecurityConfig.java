@@ -35,7 +35,7 @@ public class WebSecurityConfig {
         log.debug("============================================Sprign Security=================================");
         httpSecurity
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()   // Public URLs
+                        .requestMatchers("/student/**").permitAll()   // Public URLs
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .csrf(csrfConfig -> csrfConfig.disable())

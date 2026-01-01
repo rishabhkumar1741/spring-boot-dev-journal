@@ -34,14 +34,17 @@ public class StudentService {
     public StudentOutputDTO addStudent(@Valid StudentInputDTO studentInputDTO) {
         Student student = new Student();
         student.setName(studentInputDTO.getName());
+        student.setEmail(studentInputDTO.getEmail());
         Student data = studentRepo.save(student);
         return new StudentOutputDTO(data);
     }
 
+    @Transactional
     public StudentOutputDTO getStudentById(Integer id) {
         Optional<Student> student = studentRepo.findByIdStudent(id);
         if(student.isPresent())
         {
+
             return new StudentOutputDTO(student.get());
         }else {
             throw new NoSuchElementException("Enter a Valid Student Id");
@@ -74,6 +77,18 @@ public class StudentService {
 
         }else {
             throw new NoSuchElementException("enter a valid Student Id and Course Id");
+        }
+
+    }
+
+    public StudentOutputDTO getStudentByEmail(StudentInputDTO studentInputDTO) {
+        Optional<Student> student = studentRepo.findByEmail(studentInputDTO.getEmail());
+        if(student.isPresent())
+        {
+            return new StudentOutputDTO(student.get());
+        }
+        else{
+            throw new NoSuchElementException("No email for this student");
         }
 
     }

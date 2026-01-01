@@ -20,10 +20,14 @@ public class StudentController {
         log.warn("Warn message");
         log.info("info message");
         log.debug("debug message");
-
-
         return studentService.getAllStudent();
     }
+    @GetMapping("/email")
+    public StudentOutputDTO getStudentByEmail(@RequestBody StudentInputDTO studentInputDTO)
+    {
+        return studentService.getStudentByEmail(studentInputDTO);
+    }
+
 
     @PostMapping
     public StudentOutputDTO addStudent(@RequestBody @Valid StudentInputDTO studentInputDTO)
@@ -37,7 +41,6 @@ public class StudentController {
         System.out.println("Void");
         studentService.deleteStudentId(id);
     }
-
 
 
     @GetMapping(path = "/{id}")

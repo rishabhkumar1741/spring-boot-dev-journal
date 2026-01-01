@@ -1,14 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/airBnb
-    username: Rishabh
+    url: jdbc:postgresql://localhost:5432/AirbnbDB1
+    username: AirbnbAdmin
     password: Temp@123
-
-  security:
-    debug: true
-    user:
-      name: "user"
-      password: "{noop}Temp123"
 
   jpa:
     hibernate:
@@ -17,10 +11,10 @@ spring:
 #    properties:
 #      hibernate:
 #        format_sql: true
-logging:
-  level:
-#    root: DEBUG
-    com.example.Week1Introduction.Week_1_.Introduction: DEBUG
+#logging:
+#  level:
+##    root: DEBUG
+#    com.example.Week1Introduction.Week_1_.Introduction: DEBUG
 
 jwt:
   secretKey: qwertyuioplkjhgfdsazxcvbnm1234567890qwertyuioplkjhgfdsazx

@@ -96,13 +96,16 @@
 - [Creation and Verification of JWT](#creation-and-verification-of-jwt)
   - [create and login](#create-and-login-)
   - [Authenticating requests using JWT](#authenticating-requests-using-jwt)
-- [Testing](#understanding-junit-and-assertj)
+### Spring Boot Testing
+- [Testing ](#spring-boot-testing)
   - [Common Junit Annotations](#common-junit-annotations)
   - [JUnit vs AssertJ](#junit-vs-assertj)
     - [Common AssertJ Methods](#common-assertj-methods)
   - [Unit Testing vs Integration Testing](#unit-testing-vs-integration-testing)
   - [Key Testing Annotations in Spring Boot](#key-testing-annotations-in-spring-boot)
-  - 
+    - [What is @DataJpaTest?](#-what-is-datajpatest)
+    - 
+  - []
 
 
 
@@ -2683,8 +2686,9 @@ public class WebSecurityConfig {
 }
 ```
 
-
-# Understanding Junit and AssertJ
+# Spring Boot Testing
+## Understanding Junit and AssertJ 
+Cmd + Shift + T (To create a Test File)
 
 ### Common Junit Annotations
 - @Test: Marks a method as a test method. JUnit will execute this method when running tests.
@@ -2736,3 +2740,58 @@ different purposes and have distinct features.
 - @TestConfiguration: Used to define extra beans or configurations for tests.
 - @WebMvcTest: Used for testing Spring MVC controllers. It initializes only the web layer and not the entire context. Useful in Unit Testing Controller layer
 - @AutoConfigureTestDatabase: Used to replace the actual database with an embedded database during tests.
+
+Example of JUnit and AssertJ
+
+#### 🔹 What is @DataJpaTest?
+@DataJpaTest is a Spring Boot test annotation used to test only the JPA layer (Repositories).
+
+- When you use it:
+  - Only JPA-related components are loaded (Repositories, Entities, DataSource).
+  - Controllers, Services, Security, etc. are NOT loaded.
+  - It uses an in-memory database (H2 by default) unless configured otherwise.
+  - Each test runs in a transaction, which is rolled back after the test.
+  - ✅ Best for testing repository logic.
+
+``` //@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)```
+
+
+
+```java
+@DataJpaTest
+//@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+class StudentRepoTest {
+
+    
+    private StudentRepo studentRepo;
+    private Student student;
+
+    @BeforeEach
+    void setup() {
+        student = Student.builder().email("1741rishabh@gmail.com")
+                .name("rishbah")
+                .build();
+    }
+
+    @Test
+    void testFindByEmail_whenEmailIsValid_thenReturnStudent() {
+        //Arrange, given
+        studentRepo.save(student);
+        //Act when
+        Optional<Student> student1 = studentRepo.findByEmail("1741rishabh@gmail.com");
+        //Assert Then
+        assertThat(student1.get()).isNotNull();
+        assertThat(student1.get().getEmail()).isEqualTo("1741rishabh@gmail.com");
+    }
+
+    @Test
+    void testFindByEmail_whenEmailIsWrong_thenReturnEmptyStudentObject() {
+//        Give
+        String email = "nayra@gmail.com";
+//        When
+        Optional<Student> student1 = studentRepo.findByEmail(email);
+//        Then
+        assertThat(student1.isPresent()).isEqualTo(false);
+    }
+}
+```
