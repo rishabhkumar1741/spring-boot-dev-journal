@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Set;
 
@@ -26,14 +27,28 @@ public class JwtService {
     }
 
 
-    public String generateToken(QC_EGMS_USERS user)
+
+    public String generateAccessToken(QC_EGMS_USERS users)
     {
         return Jwts.builder()
-                .subject(user.getUsername())
-                .claim("firstName",user.getFirstName())
-                .claim("roles", Set.of("ADMIN","USER"))
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis()+1000*60*60))
+                .subject(users.getUsername())
+                .claim("name",users.getFirstName())
+                .claim("email",users.getEmail())
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusSeconds(60*60)))
+                .signWith(getsecretKey())
+                .compact();
+    }
+
+
+
+    public String generateRefreshToken(QC_EGMS_USERS users){
+        return Jwts.builder()
+                .subject(users.getUsername())
+                .claim("name",users.getFirstName())
+                .claim("email",users.getEmail())
+                .issuedAt(Date.from(Instant.now()))
+                .expiration(Date.from(Instant.now().plusSeconds(60*60*24)))
                 .signWith(getsecretKey())
                 .compact();
     }

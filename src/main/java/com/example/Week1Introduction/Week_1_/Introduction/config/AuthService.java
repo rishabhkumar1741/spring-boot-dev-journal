@@ -1,6 +1,7 @@
 package com.example.Week1Introduction.Week_1_.Introduction.config;
 
 import com.example.Week1Introduction.Week_1_.Introduction.DTOClass.LoginDTO;
+import com.example.Week1Introduction.Week_1_.Introduction.DTOClass.TokenDTO;
 import com.example.Week1Introduction.Week_1_.Introduction.DTOClass.UserDto;
 import com.example.Week1Introduction.Week_1_.Introduction.system.JWTAuth.JwtService;
 import com.example.Week1Introduction.Week_1_.Introduction.system.QC_EGMS_USERS;
@@ -13,6 +14,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -24,13 +26,23 @@ public class AuthService {
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public String login(LoginDTO loginDTO) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDTO.getUsername(),loginDTO.getPassword())
-        );
-        QC_EGMS_USERS users = (QC_EGMS_USERS) authentication.getPrincipal();
-        System.out.println(users);
-        return jwtService.generateToken(users);
+    public TokenDTO login(LoginDTO loginDTO) {
+        Optional<QC_EGMS_USERS> users = userRepo.findByUsername(loginDTO.getUsername());
+        if (users.isPresent())
+        {
+            if(passwordEncoder.matches(loginDTO.getPassword(),users.get().getPassword()))
+            {
+                TokenDTO tokenDTO = new TokenDTO();
+                tokenDTO.setAccessToken(jwtService.generateAccessToken(users.get()));
+                tokenDTO.setRefreshToken(jwtService.generateRefreshToken(users.get()));
+                return tokenDTO;
+            }
+            else {
+                throw new RuntimeException("Enter Valid Username or Password");
+            }
+        }else {
+            throw new NoSuchElementException("UserName is not present");
+        }
     }
 
     public UserDto signUp(UserDto userDto)

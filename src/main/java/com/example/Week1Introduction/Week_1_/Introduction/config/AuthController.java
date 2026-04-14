@@ -1,11 +1,13 @@
 package com.example.Week1Introduction.Week_1_.Introduction.config;
 
 import com.example.Week1Introduction.Week_1_.Introduction.DTOClass.LoginDTO;
+import com.example.Week1Introduction.Week_1_.Introduction.DTOClass.TokenDTO;
 import com.example.Week1Introduction.Week_1_.Introduction.DTOClass.UserDto;
 
 import com.example.Week1Introduction.Week_1_.Introduction.api.model.ApiResponse;
 import com.example.Week1Introduction.Week_1_.Introduction.system.UserRepo;
 import com.example.Week1Introduction.Week_1_.Introduction.system.UserService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +31,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<String>> login(@RequestBody LoginDTO loginDTO,HttpServletResponse response)
+    public ResponseEntity<ApiResponse<TokenDTO>> login(@RequestBody LoginDTO loginDTO,HttpServletResponse response)
     {
-        String token = authService.login(loginDTO);
-        response.setHeader("Authorization", "Bearer " + token);
+        TokenDTO token = authService.login(loginDTO);
+        response.setHeader("Authorization", "Bearer " + token.getAccessToken());
+        Cookie refreshTokenCookie = new Cookie("RefreshToken",token.getRefreshToken());
+        refreshTokenCookie.setHttpOnly(true);
+        response.addCookie(refreshTokenCookie);
         return ResponseEntity.ok(ApiResponse.success(token,"Token is Generated"));
     }
 }

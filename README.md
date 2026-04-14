@@ -105,7 +105,12 @@
   - [Key Testing Annotations in Spring Boot](#key-testing-annotations-in-spring-boot)
     - [What is @DataJpaTest?](#-what-is-datajpatest)
     - 
-  - []
+  - [🧪 Mockito – Short Notes with Examples](#-mockito--short-notes-with-examples)
+  - [integration-testing](#integration-testing)
+
+### Deployment with CI/CD pipeline
+  
+
 
 
 
@@ -1604,6 +1609,25 @@ List<EmployeeDTO> dto = employeeRepository.findBy(EmployeeDTO.class);
 - Reduce unnecessary data fetching.
 - Improve performance (less data from DB).
 - Return lightweight objects instead of full entities.
+----------------------------
+### ✅ What is PESSIMISTIC_WRITE?
+@Lock(LockModeType.PESSIMISTIC_WRITE) is a JPA (Java Persistence API) annotation used to apply a pessimistic lock on a database record while executing a query.
+#### PESSIMISTIC_WRITE means:
+- When you fetch the row from the database, it will be locked for writing.
+- No other transaction can update or delete the same row until your transaction finishes.
+- Other transactions trying to write will wait or fail, depending on database settings.
+#### 🔒 Why use it?
+Use PESSIMISTIC_WRITE when you want to prevent concurrent updates to the same record.
+
+Example situation:
+- Two users try to update the same order at the same time.
+- Without a lock → both updates happen → data inconsistency.
+- With PESSIMISTIC_WRITE → second user must wait until the first one is done.
+#### 📌 Where is it used?
+  Usually in a repository method like:
+
+------------------------------------------------------------
+
 
 ## 🔄 Hibernate Entity Lifecycle States
 - ***EntityManager***  is the low-level JPA runtime API that manages entity state, queries, flush, transaction boundaries, first-level cache, etc.
@@ -2685,6 +2709,110 @@ public class WebSecurityConfig {
     }
 }
 ```
+### Role based Authorization
+- Who are you – Authentication
+- What can you do - Authorization
+##### Request Matchers
+![rishabh](src/main/resources/static/IMG14.png)
+
+#### ✅ Step 1: Set Authorities while Creating Authentication Object
+When a user is authenticated (for example, after validating a JWT), we create an Authentication object and store it in the SecurityContext.
+```java
+// Set authentication in SecurityContext
+UsernamePasswordAuthenticationToken authentication =
+        new UsernamePasswordAuthenticationToken(
+                user,                   // Principal (logged-in user)
+                null,                   // Credentials (password not stored after auth)
+                user.getAuthorities()   // Authorities (roles/permissions)
+        );
+```
+📌 Purpose:
+This tells Spring Security that the request is authenticated and provides the user’s roles/authorities.
+
+#### ✅ Step 2: Convert Roles into GrantedAuthority
+Each role must be converted into a GrantedAuthority.
+Spring Security expects roles to be prefixed with ROLE_.
+
+```java
+@Override
+public Collection<? extends GrantedAuthority> getAuthorities() {
+    return roles.stream()
+            .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+            .toList();
+}
+
+```
+- 📌Explanation:
+  - roles → list of enum values (e.g., USER, ADMIN)
+  - role.name() → converts enum to String (e.g., "USER")
+  - "ROLE_" + role.name() → required Spring Security format (e.g., "ROLE_USER")
+#### ✅ Step 3: Define Roles using Enum
+Roles are defined using an enum for type safety and consistency.
+```java
+public enum Roles {
+    USER,
+    ADMIN
+}
+```
+- 📌 Benefits of using enum:
+  - Prevents invalid role values
+  - Easy to map to database and authorities
+  - Improves readability and maintainability
+
+### ✅ Permissions in Spring Security
+
+#### ✅ Step 1: Define Permissions as Authorities
+In Spring Security, permissions are treated as authorities.
+Permissions represent specific actions a user can perform.
+
+Example permissions:
+
+```Txt
+READ_USER
+CREATE_USER
+UPDATE_USER
+DELETE_USER
+```
+```java
+new SimpleGrantedAuthority("READ_USER");
+```
+📌 Purpose:
+This allows Spring Security to check whether a user is allowed to perform a specific action.
+
+#### ✅ Step 2: Add Permissions while Creating Authentication Object
+#### ✅ Step 3: Convert Permissions into GrantedAuthority
+Spring Security checks permissions using GrantedAuthority.
+```java
+@Override
+public Collection<? extends GrantedAuthority> getAuthorities() {
+    return permissions.stream()
+            .map(permission ->
+                    new SimpleGrantedAuthority(permission.name()))
+            .toList();
+}
+```
+- 📌 Explanation:
+  - permissions → list of enum values
+  - permission.name() → converts enum to String
+  - No prefix required for permissions
+#### ✅ Step 4: Define Permissions using Enum
+Permissions are defined using enum for consistency.
+```java
+public enum Permission {
+    READ_USER,
+    CREATE_USER,
+    UPDATE_USER,
+    DELETE_USER
+}
+```
+- 📌 Benefits of using enum:
+  - Prevents invalid permission values
+  - Compile-time safety
+  - Easy mapping with roles
+  - Cleaner code structure
+
+## Security Methods Annotations
+
 
 # Spring Boot Testing
 ## Understanding Junit and AssertJ 
@@ -2795,3 +2923,178 @@ class StudentRepoTest {
     }
 }
 ```
+
+### 🧪 Mockito – Short Notes with Examples
+#### ✅ What is Mockito?
+Mockito is a mocking framework used in unit testing to create fake objects and test business logic without using real dependencies (like DB, API, etc.).
+
+✅ Why use Mockito?
+- To isolate the class under test
+- Avoid real DB / API calls
+- Make tests fast & reliable
+- Control method outputs
+
+### 🔹 Main Mockito Annotations
+### 1️⃣ @Mock
+
+Creates a fake object.
+```java
+@Mock
+private StudentRepo studentRepo;
+```
+- ✔ This does NOT contain real logic
+- ✔ You define behavior using when()
+
+### 2️⃣ @InjectMocks
+-   Creates the real object and injects all mocks into it.
+```java
+@InjectMocks
+private StudentService studentService;
+```
+- ✔ Used for the class under test
+### 3️⃣ @ExtendWith(MockitoExtension.class)
+- Enables Mockito in JUnit 5
+```java
+@ExtendWith(MockitoExtension.class)
+class StudentServiceTest {
+}
+```
+- Without this → mocks will be null.
+### 🔹 Basic Mockito Flow
+```java
+Mock → Stub → Call method → Assert result
+```
+### ✅ Example Setup
+#### Service Code
+```java
+public StudentOutputDTO getStudentById(Integer id) {
+    Optional<Student> student = studentRepo.findByIdStudent(id);
+
+    if (student.isPresent()) {
+        return new StudentOutputDTO(student.get());
+    } else {
+        throw new NoSuchElementException("Enter a Valid Student Id");
+    }
+}
+```
+### ✅ Test Class Example
+```
+@ExtendWith(MockitoExtension.class)
+class StudentServiceTest {
+
+    @Mock
+    private StudentRepo studentRepo;
+
+    @InjectMocks
+    private StudentService studentService;
+
+    private Integer id;
+    private Student student;
+
+    @BeforeEach
+    void setup() {
+        id = 1;
+        student = Student.builder()
+                .id(id)
+                .name("Rishabh")
+                .email("rishabh@gmail.com")
+                .build();
+    }
+}
+```
+### ✅ Mockito: when() – Mock behavior
+```java
+when(studentRepo.findByIdStudent(id))
+        .thenReturn(Optional.of(student));
+```
+Meaning:
+👉 When this method is called, return this value.
+### ✅ Success Test Case
+```java
+@Test
+void testGetStudentById_Success() {
+    when(studentRepo.findByIdStudent(id))
+            .thenReturn(Optional.of(student));
+
+    StudentOutputDTO result = studentService.getStudentById(id);
+
+    assertThat(result.getId()).isEqualTo(id);
+}
+```
+### ✅ Exception Test Case
+```java
+@Test
+void testGetStudentById_NotFound() {
+    when(studentRepo.findByIdStudent(id))
+            .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> studentService.getStudentById(id))
+            .isInstanceOf(NoSuchElementException.class)
+            .hasMessage("Enter a Valid Student Id");
+}
+```
+### 🔹 Mockito verify() – Check method calls
+```java
+verify(studentRepo, times(1)).findByIdStudent(id);
+```
+- ✔ Confirms method was called once.
+### Integration Testing
+
+## Deployment with CI/CD pipeline
+In Java (especially with Spring Boot), profiles are used to manage different configurations for different environments like:
+- Development (dev)
+- Testing (test)
+- Production (prod)
+### 🔹 What are Java Profiles?
+A profile lets you run your application with different settings without changing code.
+- 👉 Example:
+  -  Dev → local database
+  - Prod → real database
+
+### 🔹 In Spring Boot (Most Common Use)
+. Define profiles in config files
+- You create different files:
+  - application-dev.properties
+  - application-test.properties
+  - application-prod.properties
+  
+  Example:
+  - application-dev.properties
+```text
+server.port=8081
+spring.datasource.url=jdbc:mysql://localhost:3306/dev_db
+```
+  - application-prod.properties
+```text
+server.port=8080
+spring.datasource.url=jdbc:mysql://prod-server:3306/prod_db
+```
+2. Activate a profile
+
+   You can activate profile in multiple ways:
+   
+- ✅ Option 1: application.properties
+``` spring.profiles.active=dev```
+- ✅ Option 2: Command line
+```java -jar app.jar --spring.profiles.active=prod```
+- ✅ Option 3: Environment variable ```SPRING_PROFILES_ACTIVE=prod```
+3. Use @Profile in code
+- You can load specific beans only for certain profiles.
+```text
+@Configuration
+@Profile("dev")
+public class DevConfig {
+    // dev-specific beans
+}
+```
+```text
+@Configuration
+@Profile("prod")
+public class ProdConfig {
+    // prod-specific beans
+}
+```
+- Profile = environment-specific config
+- Use different application-{profile}.properties
+- Activate using spring.profiles.active
+- Use @Profile for conditional beans
