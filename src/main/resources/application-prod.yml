@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://sclp.cr4s2mw0ctzb.ap-south-1.rds.amazonaws.com:5432/TestDB
-    username: Rishabh
-    password: Nayra2014
+    url: ${DB_URL}/${DB_NAME}
+    username: ${USERNAME}
+    password: ${PASSWORD}
 
   jpa:
     hibernate:
@@ -17,5 +17,5 @@ spring:
 #    com.example.Week1Introduction.Week_1_.Introduction: DEBUG
 
 jwt:
-  secretKey: qwertyuioplkjhgfdsazxcvbnm1234567890qwertyuioplkjhgfdsazx
+  secretKey: ${SECRET_KEY}
 

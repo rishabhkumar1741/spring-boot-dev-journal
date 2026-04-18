@@ -36,6 +36,7 @@ public class WebSecurityConfig {
         log.debug("============================================Sprign Security=================================");
         httpSecurity
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/").permitAll()
                         .requestMatchers("/auth/**").permitAll()// Public URLs
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/post/**").hasAnyAuthority("EDITPOST")

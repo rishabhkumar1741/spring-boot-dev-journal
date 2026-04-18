@@ -108,9 +108,13 @@
   - [🧪 Mockito – Short Notes with Examples](#-mockito--short-notes-with-examples)
   - [integration-testing](#integration-testing)
 
-### Deployment with CI/CD pipeline
-  
 
+### Deployment with CI/CD pipeline
+
+##  🔹 What is AOP?
+- [🔹 What is AOP?](#-what-is-aop-1)
+- [🔹 Key Terms (Very Important)](#-key-terms-very-important)
+- [🧠 One-line Memory Trick/Example](#-one-line-memory-trick)
 
 
 
@@ -3098,3 +3102,156 @@ public class ProdConfig {
 - Use different application-{profile}.properties
 - Activate using spring.profiles.active
 - Use @Profile for conditional beans
+
+## 🔹 What is AOP?
+
+- ✅ Full Form
+  - AOP = Aspect-Oriented Programming
+- ✅ Simple Meaning
+  - AOP is a way to add extra behavior to your code without changing the main logic.
+- 👉 It helps you handle common tasks separately
+### 🔥 Real-Life Example
+#### Suppose you have a method:
+```text
+public void transferMoney() {
+    // business logic
+}
+```
+Now you want to:
+- Log activity 📄
+- Check security 🔐
+- Handle transactions 💳
+- ❌ Without AOP → you write this in every method
+- ✔ With AOP → write once, apply everywhere
+### 🔹 Core Idea
+
+👉 Separate:
+- Business logic (main work)
+- Cross-cutting concerns (common tasks)
+### 🔹 Example (Very Easy)
+
+#### Without AOP:
+```text
+public void login() {
+    System.out.println("Logging...");
+    // actual login logic
+}
+```
+#### With AOP:
+```text
+@Aspect
+class LoggingAspect {
+    @Before("execution(* login(..))")
+    public void log() {
+        System.out.println("Logging...");
+    }
+}
+```
+👉 Now logging runs automatically before login()
+### 🔹 Key Terms (Very Important)
+1. Aspect
+- 👉 A class that contains extra behavior
+- Example: Logging, Security
+2. Advice
+-    👉 What action to perform
+-    Types:
+  - - @Before → before method
+    -   @After → after method
+    -   @Around → before + after (most powerful)
+3. Join Point
+   - 👉 Where AOP can be applied
+   - (e.g., method execution)
+4. Pointcut
+   - 👉 Which methods to apply AOP on
+   - (e.g., all service methods)
+### 🔥 Where AOP is Used
+   In Spring Framework:
+  - Logging
+  - Security
+  - Transactions
+  - Exception handling
+### 🔹 Why AOP is Useful
+  - ✔ Cleaner code
+  - ✔ No duplicate code
+  - ✔ Easy maintenance
+  - ✔ Separation of concerns
+### 🧠 One-line Memory Trick
+   -  👉 AOP = Add extra features without touching main code
+```text
+package com.example.aspect;
+
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.*;
+import org.springframework.stereotype.Component;
+
+@Aspect   // 🔹 ASPECT
+@Component
+public class LoggingAspect {
+
+    // ===============================
+    // 🔹 1. EXECUTION POINTCUT (your original)
+    // ===============================
+    @Pointcut("execution(* com.example.service.BankService.transferMoney(..))")
+    public void transferMoneyPointcut() {}
+
+
+
+    // ===============================
+    // 🔹 2. WITHIN POINTCUT
+    // ===============================
+    // 👉 Applies to ALL methods inside BankService class
+    @Pointcut("within(com.example.service.BankService)")
+    public void allMethodsInService() {}
+
+
+
+    // ===============================
+    // 🔹 3. ANNOTATION POINTCUT
+    // ===============================
+    // 👉 Applies to methods with @LogExecution annotation
+    @Pointcut("@annotation(com.example.annotation.LogExecution)")
+    public void annotationBasedPointcut() {}
+
+
+
+    // ===============================
+    // 🔹 ADVICE USING EXECUTION POINTCUT
+    // ===============================
+    @Before("transferMoneyPointcut()")
+    public void beforeTransfer(JoinPoint joinPoint) {
+        System.out.println("EXECUTION - Before: " + joinPoint.getSignature().getName());
+    }
+
+
+
+    // ===============================
+    // 🔹 ADVICE USING WITHIN POINTCUT
+    // ===============================
+    @Before("allMethodsInService()")
+    public void beforeAllMethods(JoinPoint joinPoint) {
+        System.out.println("WITHIN - Before method in class: " 
+            + joinPoint.getSignature().getName());
+    }
+
+
+
+    // ===============================
+    // 🔹 ADVICE USING ANNOTATION POINTCUT
+    // ===============================
+    @Before("annotationBasedPointcut()")
+    public void beforeAnnotatedMethod(JoinPoint joinPoint) {
+        System.out.println("ANNOTATION - Before annotated method: " 
+            + joinPoint.getSignature().getName());
+    }
+
+
+
+    // ===============================
+    // 🔹 AFTER ADVICE (common)
+    // ===============================
+    @After("transferMoneyPointcut()")
+    public void afterTransfer(JoinPoint joinPoint) {
+        System.out.println("After method: " + joinPoint.getSignature().getName());
+    }
+}
+```
